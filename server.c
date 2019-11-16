@@ -12,11 +12,33 @@
 char *API_KEY = "64e92529c453f7621bd77a0948526d55";
 char *LOCATION = "Nicosia,cy";
 int THREADS;
-int PORT;
+int PORT = 2000;
 int DURATION;
 const char *OPENWEATHERMAP_SERVER = "api.openweathermap.org";
 int OPENWEATHERMAP_PORT = 80;
 const char* OPENWEATHERMAP_GET = "GET /data/2.5/%s?q=%s&APPID=%s HTTP/1.1\nHost: api.openweathermap.org\nUser-Agent: myOpenHAB\nAccept: application/json\nConnection: close\n\n";
+const char* NOT_IMPLEMENTED = "HTTP/1.1 501 Not Implemented\r\nServer: my_webserver\r\nConnection: close\r\nContent-Type: text/plain\r\nContent-Length: 24\r\n\r\nMethod not implemented!";
+
+int parse(char *request, char **method, char **path){
+    const char *start_of_path = strchr(request, ' ') + 1;
+
+    if ((*method  = (char *) malloc((start_of_path - request - 1) * sizeof(char))) == NULL){
+        perror("malloc method");
+        return EXIT_FAILURE;
+    }
+    strncpy(*method, request, start_of_path - request - 1);
+    (*method)[strlen(*method)] = '\0';
+
+    const char *end_of_path = strchr(start_of_path, ' ');
+    if ((*path = (char *) malloc((end_of_path - start_of_path + 1) * sizeof(char))) == NULL){
+        perror("malloc path");
+        return EXIT_FAILURE;
+    }
+    strncpy(*path, start_of_path, end_of_path - start_of_path);
+    (*path)[sizeof(*path)] = '\0';
+
+    return EXIT_SUCCESS;
+}
 
 int connect_socket(const char *server_name, int port, int *sock){
     int serverlen;
@@ -134,7 +156,9 @@ int get_weather_data(){
 
 int main(int argc, char *argv[]) /* Server with Internet stream sockets */
 {
-    get_weather_data();
+//    if (get_weather_data() == EXIT_FAILURE){
+//        printf("Error in get_weather_data\n");
+//    }
 
     int port, sock, newsock, serverlen;//, clientlen;
     socklen_t clientlen;
@@ -143,22 +167,15 @@ int main(int argc, char *argv[]) /* Server with Internet stream sockets */
     struct sockaddr *serverptr, *clientptr;
     struct hostent *rem;
 
-    if (argc < 2)
-    { /* Check if server's port number is given */
-        printf("Please give the port number\n");
-        exit(1);
-    }
-
     if ((sock = socket(AF_INET, SOCK_STREAM, 0)) < 0)
     { /* Create socket */
         perror("socket");
         exit(1);
     }
 
-    port = atoi(argv[1]); /* Convert port number to integer */
     server.sin_family = AF_INET; /* Internet domain */
     server.sin_addr.s_addr = htonl(INADDR_ANY); /* My Internet address */
-    server.sin_port = htons(port); /* The given port */
+    server.sin_port = htons(PORT); /* The given port */
     serverptr = (struct sockaddr *) &server;
     serverlen = sizeof server;
 
@@ -173,7 +190,7 @@ int main(int argc, char *argv[]) /* Server with Internet stream sockets */
         exit(1);
     }
 
-    printf("Listening for connections to port %d\n", port);
+    printf("Listening for connections to port %d\n", PORT);
 
     while(1)
     {
@@ -193,8 +210,8 @@ int main(int argc, char *argv[]) /* Server with Internet stream sockets */
             exit(1);
         }
 
-        printf("Accepted connection from %s\n", rem -> h_name);
-
+        char *method = NULL;
+        char *path = NULL;
         switch (fork())
         { /* Create child for serving the client */
             case -1:
@@ -211,7 +228,10 @@ int main(int argc, char *argv[]) /* Server with Internet stream sockets */
                         perror("read");
                         exit(1);
                     }
-                    printf("Read string: %s\n", buf);
+
+                    parse(buf, &method, &path);
+                    printf("Method: %s\n", method);
+                    printf("Path: %s\n", path);
 
                     bzero(buf, sizeof buf);
 
