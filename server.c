@@ -19,10 +19,10 @@ int OPENWEATHERMAP_PORT = 80;
 const char* OPENWEATHERMAP_GET = "GET /data/2.5/%s?q=%s&APPID=%s HTTP/1.1\nHost: api.openweathermap.org\nUser-Agent: myOpenHAB\nAccept: application/json\nConnection: close\n\n";
 const char* NOT_IMPLEMENTED = "HTTP/1.1 501 Not Implemented\r\nServer: my_webserver\r\nConnection: close\r\nContent-Type: text/plain\r\nContent-Length: 24\r\n\r\nMethod not implemented!";
 
-int parse(char *request, char **method, char **path){
+int parse(char *request, char **method, char **path, char **connection){
     const char *start_of_path = strchr(request, ' ') + 1;
 
-    if ((*method  = (char *) malloc((start_of_path - request - 1) * sizeof(char))) == NULL){
+    if ((*method  = (char *) calloc((start_of_path - request - 1), sizeof(char))) == NULL){
         perror("malloc method");
         return EXIT_FAILURE;
     }
@@ -30,12 +30,47 @@ int parse(char *request, char **method, char **path){
     (*method)[strlen(*method)] = '\0';
 
     const char *end_of_path = strchr(start_of_path, ' ');
-    if ((*path = (char *) malloc((end_of_path - start_of_path + 1) * sizeof(char))) == NULL){
+    if ((*path = (char *) calloc((end_of_path - start_of_path + 1), sizeof(char))) == NULL){
         perror("malloc path");
         return EXIT_FAILURE;
     }
     strncpy(*path, start_of_path, end_of_path - start_of_path);
     (*path)[sizeof(*path)] = '\0';
+
+    char *name = NULL,*value_start = NULL, *value_end = NULL, *value = NULL;
+    char *next_line = strchr(end_of_path, '\n') + 1;
+    while ((strcmp(next_line, "\r\n") != 0) && next_line != NULL){
+        value_start = strchr(next_line, ':');
+        if ((name = (char *) calloc((value_start - next_line), sizeof(char))) == NULL){
+            perror("malloc name");
+            return EXIT_FAILURE;
+        }
+        strncpy(name, next_line, value_start - next_line);
+        name[strlen(name)] = '\0';
+//        printf("Name: %s\n", name);
+
+        value_start = value_start + 2;
+        value_end = strchr(value_start, '\r');
+        if ((value = (char *) calloc((value_end - value_start), sizeof(char))) == NULL){
+            perror("malloc value");
+            return EXIT_FAILURE;
+        }
+        strncpy(value, value_start, value_end - value_start);
+        value[strlen(value)] = '\0';
+//        printf("Value: %s\n", value);
+
+        if (strcmp(name,"Connection") == 0){
+            if (((*connection) = (char *) calloc((value_end - value_start), sizeof(char))) == NULL){
+                perror("malloc connection");
+                return EXIT_FAILURE;
+            }
+            strncpy((*connection), value, strlen(value));
+        }
+
+        free(name);
+        free(value);
+        next_line = value_end + 2;
+    }
 
     return EXIT_SUCCESS;
 }
@@ -160,7 +195,9 @@ int main(int argc, char *argv[]) /* Server with Internet stream sockets */
 //        printf("Error in get_weather_data\n");
 //    }
 
-    int port, sock, newsock, serverlen;//, clientlen;
+char *a,*b,*c;
+parse("GET path HTTP/1.1\r\nHost: www.example.com\r\nTest: value\r\nConnection: close\r\n\r\n", &a,&b,&c );
+    int sock, newsock, serverlen;// clientlen;
     socklen_t clientlen;
     char buf[256];
     struct sockaddr_in server, client;
@@ -212,6 +249,7 @@ int main(int argc, char *argv[]) /* Server with Internet stream sockets */
 
         char *method = NULL;
         char *path = NULL;
+        char *connection = NULL;
         switch (fork())
         { /* Create child for serving the client */
             case -1:
@@ -228,10 +266,11 @@ int main(int argc, char *argv[]) /* Server with Internet stream sockets */
                         perror("read");
                         exit(1);
                     }
-
-                    parse(buf, &method, &path);
+                    printf("BUF: %s\n\n",buf);
+                    parse(buf, &method, &path, &connection);
                     printf("Method: %s\n", method);
                     printf("Path: %s\n", path);
+                    printf("Connection: %s\n", connection);
 
                     bzero(buf, sizeof buf);
 
@@ -240,7 +279,7 @@ int main(int argc, char *argv[]) /* Server with Internet stream sockets */
                         perror("write");
                         exit(1);
                     }
-                } while (1); /* Finish on "end" */
+                } while (strcmp(connection,"close") != 0); /* Finish on "end" */
             }
                 close(newsock); /* Close socket */
                 printf("Connection from %s is closed\n", rem -> h_name);
