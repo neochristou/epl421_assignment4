@@ -5,3 +5,6 @@ git:
 
 server:
 	gcc -Wall -o myserver server.c
+
+client:
+	gcc -Wall -o myclient client.c
