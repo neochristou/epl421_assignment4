@@ -9,6 +9,8 @@
 #include <string.h>
 #include <fcntl.h>
 
+//api.openweathermap.org//data/2.5/weather?q=Nicosia,cy&APPID=64e92529c453f7621bd77a0948526d55
+
 char *API_KEY = "64e92529c453f7621bd77a0948526d55";
 char *LOCATION = "Nicosia,cy";
 int THREADS;
@@ -191,12 +193,16 @@ int get_weather_data(){
 
 int main(int argc, char *argv[]) /* Server with Internet stream sockets */
 {
-//    if (get_weather_data() == EXIT_FAILURE){
-//        printf("Error in get_weather_data\n");
-//    }
+   if (get_weather_data() == EXIT_FAILURE){
+       printf("Error in get_weather_data\n");
+   }
 
 char *a,*b,*c;
 parse("GET path HTTP/1.1\r\nHost: www.example.com\r\nTest: value\r\nConnection: close\r\n\r\n", &a,&b,&c );
+
+    // printf("a=%s\nb=%s\nc=%s\n",a,b,c);
+    // sleep(3000)
+
     int sock, newsock, serverlen;// clientlen;
     socklen_t clientlen;
     char buf[256];
