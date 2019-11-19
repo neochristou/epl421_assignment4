@@ -8,18 +8,16 @@
 #include <string.h>
 #include <fcntl.h>
 
-int PORT=2000;
-char *URL="172.20.245.124";
+int PORT = 2000;
+char *URL = "172.20.231.20";
 
-
-int connect_socket(const char *server_name, int port, int *sock){
+int connect_socket(const char *server_name, int port, int *sock) {
     int serverlen;
     struct sockaddr_in server;
     struct sockaddr *serverptr;
     struct hostent *rem;
 
-    if ((*sock = socket(AF_INET, SOCK_STREAM, 0)) < 0)
-    { /* Create socket */
+    if ((*sock = socket(AF_INET, SOCK_STREAM, 0)) < 0) { /* Create socket */
         perror("socket");
         return EXIT_FAILURE;
     }
@@ -30,7 +28,7 @@ int connect_socket(const char *server_name, int port, int *sock){
         return EXIT_FAILURE;
     }
 
-    bcopy((char *) rem -> h_addr, (char *) &server.sin_addr,rem -> h_length);
+    bcopy((char *) rem -> h_addr, (char *) &server.sin_addr, rem -> h_length);
     server.sin_family = AF_INET; /* Internet domain */
     server.sin_port = htons(port);
     serverptr = (struct sockaddr *) &server;
@@ -44,38 +42,35 @@ int connect_socket(const char *server_name, int port, int *sock){
     return EXIT_SUCCESS;
 }
 
-int main(){
+int main() {
 
-	char buf[256];
+    char buf[256];
 
     int res;
     int sock;
 
-    if(connect_socket(URL,PORT,&sock)== EXIT_SUCCESS){
-    	printf("Requested connection to host %s port %d\n", URL, PORT);
+    if (connect_socket(URL, PORT, &sock) == EXIT_SUCCESS) {
+        printf("Requested connection to host %s port %d\n", URL, PORT);
     }
-    else{
-    	printf("Connection has not granded\n");
-    	return -1;
+    else {
+        printf("Connection has not granded\n");
+        return -1;
     }
 
     bzero(buf, sizeof buf); /* Initialize buffer */
 
-    strcpy(buf,"GET /items HTTP/1.1\r\nHost: cpanta02.org\r\nUser-Agent: cpanta02Web\r\nAccept: application/json\r\nConnection: close\r\n\r\n");
+    strcpy(buf, "GET /items HTTP/1.1\r\nHost: cpanta02.org\r\nUser-Agent: cpanta02Web\r\nAccept: application/json\r\nConnection: close\r\n\r\n");
     // printf("%li\n", sizeof(buf) );
     // sleep(3000);
 
     if (write(sock, buf, sizeof(buf)) < 0) { /* Send message */
-		perror("write"); exit(1);
-	}
+        perror("write"); exit(1);
+    }
 
-	bzero(buf, sizeof(buf)); /* Initialize buffer */
-	if (read(sock, buf, sizeof(buf)) < 0) { /* Receive message */
-		perror("read"); exit(1);
-	}
-	printf("\n%s\n", buf);
-
-
-
-	return 1;
+    bzero(buf, sizeof(buf)); /* Initialize buffer */
+    if (read(sock, buf, sizeof(buf)) < 0) { /* Receive message */
+        perror("read"); exit(1);
+    }
+    printf("\n%s\n", buf);
+    return 1;
 }
