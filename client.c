@@ -9,7 +9,7 @@
 #include <fcntl.h>
 
 int PORT = 2000;
-char *URL = "172.20.231.20";
+char *URL = "192.168.50.22";
 
 int connect_socket(const char *server_name, int port, int *sock) {
     int serverlen;
@@ -59,7 +59,7 @@ int main() {
 
     bzero(buf, sizeof buf); /* Initialize buffer */
 
-    strcpy(buf, "GET /items HTTP/1.1\r\nHost: cpanta02.org\r\nUser-Agent: cpanta02Web\r\nAccept: application/json\r\nConnection: close\r\n\r\n");
+    strcpy(buf, "GET /items HTTP/1.1\r\nHost: nicolas\r\nConnection: close\r\n\r\n"); //User-Agent: cpanta02Web\r\nAccept: application/json\r\n
     // printf("%li\n", sizeof(buf) );
     // sleep(3000);
 

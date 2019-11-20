@@ -20,6 +20,13 @@ const char *OPENWEATHERMAP_SERVER = "api.openweathermap.org";
 int OPENWEATHERMAP_PORT = 80;
 const char* OPENWEATHERMAP_GET = "GET /data/2.5/%s?q=%s&units=metric&APPID=%s HTTP/1.1\nHost: api.openweathermap.org\nUser-Agent: myOpenHAB\nAccept: application/json\nConnection: close\n\n";
 const char* NOT_IMPLEMENTED = "HTTP/1.1 501 Not Implemented\r\nServer: my_webserver\r\nConnection: close\r\nContent-Type: text/plain\r\nContent-Length: 24\r\n\r\nMethod not implemented!";
+const char* ITEMS="station_id current_time current_temp current_pressure current_humidity current_speed current_cloudiness current_rain current_sunrise current_sunset forecast3_time forecast3_temp forecast6_time forecast6_temp forecast9_time forecast9_temp forecast12_time forecast12_temp";
+const char* SERVER_NAME_HEADER="Server: my_webserver\r\n";
+const char* CONNECTION_CLOSE="Connection: close\r\n";
+const char* CONNECTION_ALIVE="Connection: keep-alive\r\n";
+const char* CONTENT_TYPE="Content-Type: text/plain\r\n";
+const char *REPLY_OK="HTTP/1.1 200 OK\r\n";
+const char* NOT_FOUND = "HTTP/1.1 404 NotFound\r\nServer: my_webserver\r\nConnection: keep-alive\r\nContent-Type: text/plain\r\nContent-Length: 16\r\n\r\nPath not found!";
 
 int parse(char *request, char **method, char **path, char **connection) {
     const char *start_of_path = strchr(request, ' ') + 1;
@@ -183,6 +190,32 @@ int get_weather_data() {
     return EXIT_SUCCESS;
 }
 
+int item_exist(char *item_name){
+    if(strstr(item_name,ITEMS)!=NULL)
+        return EXIT_SUCCESS;
+    return EXIT_FAILURE;
+}
+
+int get_request(char *method,char *path,char *connection){
+    
+    if(!strcmp(path,"/items")){
+        // Prepare items to send
+    }
+    else if(!strncmp("/items/",path,7)){
+        char *item_name = &path[7];
+        if(item_exist(item_name) == EXIT_SUCCESS){
+            // Prepare items to send
+        }
+        else
+            return EXIT_FAILURE;
+    }
+    else
+        return EXIT_FAILURE;
+
+    //Send header and data
+    return EXIT_SUCCESS;
+}
+
 int main(int argc, char *argv[]) { /* Server with Internet stream sockets */
     if (get_weather_data() == EXIT_FAILURE) {
         printf("Error in get_weather_data\n");
@@ -261,7 +294,22 @@ int main(int argc, char *argv[]) { /* Server with Internet stream sockets */
                 printf("Method: %s\n", method);
                 printf("Path: %s\n", path);
                 printf("Connection: %s\n", connection);
+                int len = strlen(path);
+                if(!strcmp(method,"GET")){
+                    int check=get_request(method,path,connection);
+                }
+                else if(!strcmp(method,"HEAD")){
 
+                }
+                else if(!strcmp(method,"PUT")){
+
+                }
+                else if(!strcmp(method,"DELETE")){
+
+                }
+                else{
+
+                }
                 bzero(buf, sizeof buf);
 
                 sprintf(buf, "Reply\n");
@@ -271,7 +319,7 @@ int main(int argc, char *argv[]) { /* Server with Internet stream sockets */
                 }
             } while (strcmp(connection, "close") != 0); /* Finish on "end" */
         }
-            close(newsock); /* Close socket */
+        close(newsock); /* Close socket */
         printf("Connection from %s is closed\n", rem -> h_name);
         exit(0);
         }
