@@ -59,7 +59,7 @@ int main() {
 
     bzero(buf, sizeof buf); /* Initialize buffer */
 
-    strcpy(buf, "GET /items HTTP/1.1\r\nHost: nicolas\r\nConnection: close\r\n\r\n"); //User-Agent: cpanta02Web\r\nAccept: application/json\r\n
+    strcpy(buf, "GET /items/7 HTTP/1.1\r\nHost: nicolas\r\nConnection: close\r\n\r\n"); //User-Agent: cpanta02Web\r\nAccept: application/json\r\n
     // printf("%li\n", sizeof(buf) );
     // sleep(3000);
 
