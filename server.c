@@ -11,8 +11,8 @@
 
 //api.openweathermap.org//data/2.5/weather?q=Nicosia,cy&APPID=64e92529c453f7621bd77a0948526d55
 
-char *API_KEY = "64e92529c453f7621bd77a0948526d55";
-char *LOCATION = "Nicosia,cy";
+char *API_KEY;
+char *LOCATION;
 int THREADS;
 int PORT = 2000;
 int DURATION;
@@ -24,6 +24,61 @@ const char* NOT_IMPLEMENTED = "HTTP/1.1 501 Not Implemented\r\nServer: my_webser
 const char *REPLY_OK_CLOSE = "HTTP/1.1 200 OK\r\nServer: my_webserver\r\nConnection: close\r\nContent-Type: text/plain\r\nContent-Length: ";
 const char *REPLY_OK_ALIVE = "HTTP/1.1 200 OK\r\nServer: my_webserver\r\nConnection: keep-alive\r\nContent-Type: text/plain\r\nContent-Length: ";
 const char* NOT_FOUND = "HTTP/1.1 404 NotFound\r\nServer: my_webserver\r\nConnection: keep-alive\r\nContent-Type: text/plain\r\nContent-Length: 16\r\n\r\nPath not found!";
+
+int read_config(char *filename){
+    FILE *config_file;
+    char buf[256];
+    if ( (config_file = fopen(filename,"r")) == NULL ){
+        perror("fopen");
+        return EXIT_FAILURE;
+    }
+
+    char *argument, *equals, *value;
+    while (fgets(buf, 255, config_file) != NULL){
+        if ( (equals = strchr(buf, '=')) != NULL){
+            if ((argument = (char *) calloc((equals - buf), sizeof(char))) == NULL){
+                perror("malloc argument");
+                return EXIT_FAILURE;
+            }
+            strncpy(argument, buf, equals - buf);
+            argument[strlen(argument)] = '\0';
+            if ((value = (char *) calloc((strlen(buf) - strlen(argument)), sizeof(char))) == NULL){
+                perror("malloc value");
+                return EXIT_FAILURE;
+            }
+            strncpy(value, equals + 1, strlen(buf) - strlen(argument));
+            value[strlen(value)] = '\0';
+            if (strcmp(argument, "THREADS") == 0){
+                THREADS = atoi(value);
+            }if (strcmp(argument, "DURATION") == 0){
+                DURATION = atoi(value);
+            }
+            if (strcmp(argument, "PORT") == 0){
+                PORT = atoi(value);
+            }
+            if (strcmp(argument, "LOCATION") == 0){
+                if ((LOCATION = (char *) calloc((strlen(value) + 1), sizeof(char))) == NULL){
+                    perror("malloc LOCATION");
+                    return EXIT_FAILURE;
+                }
+                strncpy(LOCATION, value, strlen(value));
+                LOCATION[strlen(LOCATION)] = '\0';
+            }
+            if (strcmp(argument, "API_KEY") == 0){
+                if ((API_KEY = (char *) calloc((strlen(value) + 1), sizeof(char))) == NULL){
+                    perror("malloc API_KEY");
+                    return EXIT_FAILURE;
+                }
+                strncpy(API_KEY, value, strlen(value));
+                API_KEY[strlen(API_KEY)] = '\0';
+            }
+            free(argument);
+            free(value);
+        }
+    }
+
+    return EXIT_SUCCESS;
+}
 
 int parse(char *request, char **method, char **path, char **connection) {
     const char *start_of_path = strchr(request, ' ') + 1;
@@ -251,8 +306,12 @@ int main(int argc, char *argv[]) { /* Server with Internet stream sockets */
         printf("Error in get_weather_data\n");
     }
 
-    char *a, *b, *c;
-    parse("GET path HTTP/1.1\r\nHost: www.example.com\r\nTest: value\r\nConnection: close\r\n\r\n", &a, &b, &c );
+    if (read_config("./config.txt") == EXIT_FAILURE){
+        printf("Error in read_config\n");
+    }
+
+//    char *a, *b, *c;
+//    parse("GET path HTTP/1.1\r\nHost: www.example.com\r\nTest: value\r\nConnection: close\r\n\r\n", &a, &b, &c );
 
     // printf("a=%s\nb=%s\nc=%s\n",a,b,c);
     // sleep(3000)
@@ -297,13 +356,6 @@ int main(int argc, char *argv[]) { /* Server with Internet stream sockets */
             exit(1);
         } /* Accept connection */
 
-        //reverse DNS
-        rem = gethostbyaddr((char *) &client.sin_addr.s_addr, sizeof client.sin_addr.s_addr, /* Find client's address */client.sin_family);
-        if (rem == NULL) {
-            perror("gethostbyaddr");
-            exit(1);
-        }
-
         char *method = NULL;
         char *path = NULL;
         char *connection = NULL;
@@ -319,11 +371,11 @@ int main(int argc, char *argv[]) { /* Server with Internet stream sockets */
                     perror("read");
                     exit(1);
                 }
-                printf("BUF: %s\n\n", buf);
-                parse(buf, &method, &path, &connection);
-                printf("Method: %s\n", method);
-                printf("Path: %s\n", path);
-                printf("Connection: %s\n", connection);
+//                printf("BUF: %s\n\n", buf);
+//                parse(buf, &method, &path, &connection);
+//                printf("Method: %s\n", method);
+//                printf("Path: %s\n", path);
+//                printf("Connection: %s\n", connection);
                 bzero(buf, sizeof buf);
                 if (method_exist(method) == EXIT_FAILURE) {
                     strcpy(buf, NOT_IMPLEMENTED);
