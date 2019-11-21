@@ -9,7 +9,7 @@
 #include <fcntl.h>
 
 int PORT = 2000;
-char *URL = "192.168.50.22";
+char *URL = "172.20.242.231";
 
 int connect_socket(const char *server_name, int port, int *sock) {
     int serverlen;
@@ -44,7 +44,7 @@ int connect_socket(const char *server_name, int port, int *sock) {
 
 int main() {
 
-    char buf[256];
+    char buf[25600];
 
     int res;
     int sock;
@@ -68,9 +68,17 @@ int main() {
     }
 
     bzero(buf, sizeof(buf)); /* Initialize buffer */
+
     if (read(sock, buf, sizeof(buf)) < 0) { /* Receive message */
         perror("read"); exit(1);
     }
     printf("\n%s\n", buf);
+
+    while ( read(sock, buf, sizeof(buf)) < 0) {
+        
+        printf("%s\n",buf );
+        bzero(buf, sizeof buf); /* Initialize buffer */
+    }
+   
     return 1;
 }

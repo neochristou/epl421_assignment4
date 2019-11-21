@@ -8,13 +8,16 @@
 #include <stdlib.h>
 #include <string.h>
 #include <fcntl.h>
+#include "myjson.h"
 
 //api.openweathermap.org//data/2.5/weather?q=Nicosia,cy&APPID=64e92529c453f7621bd77a0948526d55
+char *choices_array[18] = { "station_id", "current_time", "current_temp", "current_pressure", "current_humidity", "current_speed", "current_cloudiness", "current_rain", "current_sunrise", "current_sunset", "forecast3_time", "forecast3_temp", "forecast6_time", "forecast6_temp", "forecast9_time", "forecast9_temp", "forecast12_time", "forecast12_temp"};
+json_t *weather_json_struct = NULL;
 
-char *API_KEY;
-char *LOCATION;
-int THREADS;
-int PORT;
+char *API_KEY = "64e92529c453f7621bd77a0948526d55";
+char *LOCATION = "Nicosia,cy";
+int THREADS = 40;
+int PORT = 2000;
 int DURATION;
 const char *OPENWEATHERMAP_SERVER = "api.openweathermap.org";
 int OPENWEATHERMAP_PORT = 80;
@@ -25,47 +28,47 @@ const char *REPLY_OK_CLOSE = "HTTP/1.1 200 OK\r\nServer: my_webserver\r\nConnect
 const char *REPLY_OK_ALIVE = "HTTP/1.1 200 OK\r\nServer: my_webserver\r\nConnection: keep-alive\r\nContent-Type: text/plain\r\nContent-Length: ";
 const char* NOT_FOUND = "HTTP/1.1 404 NotFound\r\nServer: my_webserver\r\nConnection: keep-alive\r\nContent-Type: text/plain\r\nContent-Length: 16\r\n\r\nPath not found!";
 
-int read_config(char *filename){
+int read_config(char *filename) {
     FILE *config_file;
     char buf[256];
-    if ( (config_file = fopen(filename,"r")) == NULL ){
+    if ( (config_file = fopen(filename, "r")) == NULL ) {
         perror("fopen");
         return EXIT_FAILURE;
     }
 
     char *argument, *equals, *value;
-    while (fgets(buf, 255, config_file) != NULL){
-        if ( (equals = strchr(buf, '=')) != NULL){
-            if ((argument = (char *) calloc((equals - buf), sizeof(char))) == NULL){
+    while (fgets(buf, 255, config_file) != NULL) {
+        if ( (equals = strchr(buf, '=')) != NULL) {
+            if ((argument = (char *) calloc((equals - buf), sizeof(char))) == NULL) {
                 perror("malloc argument");
                 return EXIT_FAILURE;
             }
             strncpy(argument, buf, equals - buf);
             argument[strlen(argument)] = '\0';
-            if ((value = (char *) calloc((strlen(buf) - strlen(argument)), sizeof(char))) == NULL){
+            if ((value = (char *) calloc((strlen(buf) - strlen(argument)), sizeof(char))) == NULL) {
                 perror("malloc value");
                 return EXIT_FAILURE;
             }
             strncpy(value, equals + 1, strlen(buf) - strlen(argument));
             value[strlen(value)] = '\0';
-            if (strcmp(argument, "THREADS") == 0){
+            if (strcmp(argument, "THREADS") == 0) {
                 THREADS = atoi(value);
-            }if (strcmp(argument, "DURATION") == 0){
+            } if (strcmp(argument, "DURATION") == 0) {
                 DURATION = atoi(value);
             }
-            if (strcmp(argument, "PORT") == 0){
+            if (strcmp(argument, "PORT") == 0) {
                 PORT = atoi(value);
             }
-            if (strcmp(argument, "LOCATION") == 0){
-                if ((LOCATION = (char *) calloc((strlen(value) + 1), sizeof(char))) == NULL){
+            if (strcmp(argument, "LOCATION") == 0) {
+                if ((LOCATION = (char *) calloc((strlen(value) + 1), sizeof(char))) == NULL) {
                     perror("malloc LOCATION");
                     return EXIT_FAILURE;
                 }
                 strncpy(LOCATION, value, strlen(value));
                 LOCATION[strlen(LOCATION)] = '\0';
             }
-            if (strcmp(argument, "API_KEY") == 0){
-                if ((API_KEY = (char *) calloc((strlen(value) + 1), sizeof(char))) == NULL){
+            if (strcmp(argument, "API_KEY") == 0) {
+                if ((API_KEY = (char *) calloc((strlen(value) + 1), sizeof(char))) == NULL) {
                     perror("malloc API_KEY");
                     return EXIT_FAILURE;
                 }
@@ -175,33 +178,30 @@ int get_weather_data() {
     }
 
     /*Get current weather data and save to json file*/
-    int file_current = open("../current.json", O_WRONLY | O_CREAT | O_TRUNC, 0644);
-    if (file_current < 0) {
-        perror("opening file");
-        return EXIT_FAILURE;
-    }
+    // int file_current = open("../current.json", O_WRONLY | O_CREAT | O_TRUNC, 0644);
+    // if (file_current < 0) {
+    //     perror("opening file");
+    //     return EXIT_FAILURE;
+    // }
     bzero(buf, sizeof buf); /* Initialize buffer */
     sprintf(buf , OPENWEATHERMAP_GET, "weather", LOCATION, API_KEY);
     if (write(sock1, buf, sizeof buf) < 0) {  /* Send message */
         perror("write");
         return EXIT_FAILURE;
     }
+    char current_json_string[1000];
+    bzero(current_json_string, sizeof(current_json_string));
     bzero(buf, sizeof buf); /* Initialize buffer */
-    while ((res = read(sock1, buf, sizeof buf)) > 0) {
+    while ((res = read(sock1, buf, sizeof(buf))) > 0) {
         if (res < 0) {
             perror("read");
             return EXIT_FAILURE;
         }
-        if ( write(file_current, buf, strlen(buf)) != strlen(buf) ) {
-            perror ("write error");
-            return EXIT_FAILURE;
-        }
+        strncat(current_json_string, buf, sizeof(buf));
         bzero(buf, sizeof buf); /* Initialize buffer */
     }
-    if (close(file_current) < 0) {
-        perror("Closing file:");
-        return EXIT_FAILURE;
-    }
+
+    //printf("%s\n", current_json_string);
     close(sock1);
 
     if ( (connect_socket(OPENWEATHERMAP_SERVER, OPENWEATHERMAP_PORT, &sock2)) == EXIT_FAILURE) {
@@ -209,11 +209,12 @@ int get_weather_data() {
         return  EXIT_FAILURE;
     }
     /*Get forecast weather data and save to json file*/
-    int file_forecast = open("../forecast.json", O_WRONLY | O_CREAT | O_TRUNC, 0644);
-    if (file_forecast < 0) {
-        perror("opening file");
-        return EXIT_FAILURE;
-    }
+    // int file_forecast = open("../forecast.json", O_WRONLY | O_CREAT | O_TRUNC, 0644);
+    // if (file_forecast < 0) {
+    //     perror("opening file");
+    //     return EXIT_FAILURE;
+    // }
+
     bzero(buf, sizeof buf); /* Initialize buffer */
     sprintf(buf, OPENWEATHERMAP_GET, "forecast", LOCATION, API_KEY, "close");
 
@@ -221,46 +222,71 @@ int get_weather_data() {
         perror("write");
         return EXIT_FAILURE;
     }
+
+    char forecast_json_string[50000];
+    bzero(forecast_json_string, sizeof(forecast_json_string));
+
     bzero(buf, sizeof buf); /* Initialize buffer */
     while ((res = read(sock2, buf, sizeof buf)) > 0) {
         if (res < 0) {
             perror("read");
             return EXIT_FAILURE;
         }
-        if ( write(file_forecast, buf, strlen(buf)) != strlen(buf) ) {
-            perror ("write error");
-            return EXIT_FAILURE;
-        }
+        strncat(forecast_json_string, buf, sizeof(buf));
         bzero(buf, sizeof buf); /* Initialize buffer */
     }
-    if (close(file_forecast) < 0) {
-        perror("Closing file:");
-        return EXIT_FAILURE;
-    }
+
     close(sock2);
+
+    //printf("%s\n",forecast_json_string);
+
+
+
+    //json_t *createJsonStruct(char *, char *);
+    char *current_json_string_noheader = JsonHeaderRemover(current_json_string);
+    char *forecast_json_string_noheader = JsonHeaderRemover(forecast_json_string);
+
+    weather_json_struct = createJsonStruct(current_json_string_noheader, forecast_json_string_noheader);
+
+    //printf("JSON:\n%s\n", json_dumps(json_struct,JSON_ENSURE_ASCII));
+
+    //printf("%s\n",forecast_json_string_noheader);
+
+
+
+
 
     return EXIT_SUCCESS;
 }
 
-int header_reply(int newsock, char *connection, int content_length) {
-    char buf[256];
+int header_reply(int newsock, char *connection, int content_length, char *temp_buf) {
+    char buf[25600];
     char content_header[10];
-    sprintf(content_header,"%d\r\n\r\n",content_length);
+    sprintf(content_header, "%d\r\n\r\n", content_length);
     bzero(buf, sizeof buf);
-    if(!strcmp(connection,"close"))
-        strcpy(buf,REPLY_OK_CLOSE);
+    if (!strcmp(connection, "close"))
+        strcpy(buf, REPLY_OK_CLOSE);
     else
-        strcpy(buf,REPLY_OK_ALIVE);
-    strcat(buf,content_header);
-    if (write(newsock, buf, sizeof buf) < 0) { 
+        strcpy(buf, REPLY_OK_ALIVE);
+    strcat(buf, content_header);
+    strcat(buf, temp_buf);
+    if (write(newsock, buf, sizeof buf) < 0) {
         perror("write");
         exit(1);
     }
     return EXIT_SUCCESS;
 }
 
+/*int body_reply(int newsock, char *body) {
+    if(write(newsock, body, sizeof(body)) < 0) {
+        perror("read");
+        return EXIT_FAILURE;
+    }
+    return EXIT_SUCCESS;
+}*/
+
 int item_exists(char *item) {
-    if (!strcmp(item,"c") || !strcmp(item, "station_id") || !strcmp(item, "current_time") || !strcmp(item, "current_temp") || !strcmp(item, "current_pressure") || !strcmp(item, "current_humidity") || !strcmp(item, "current_speed") || !strcmp(item, "current_cloudiness") || !strcmp(item, "current_rain") || !strcmp(item, "current_sunrise") || !strcmp(item, "current_sunset") || !strcmp(item, "forecast3_time") || !strcmp(item, "forecast3_temp") || !strcmp(item, "forecast6_time") || !strcmp(item, "forecast6_temp") || !strcmp(item, "forecast9_time") || !strcmp(item, "forecast9_temp") || !strcmp(item, "forecast12_time") || !strcmp(item, "forecast12_temp")) {
+    if (!strcmp(item, "station_id") || !strcmp(item, "current_time") || !strcmp(item, "current_temp") || !strcmp(item, "current_pressure") || !strcmp(item, "current_humidity") || !strcmp(item, "current_speed") || !strcmp(item, "current_cloudiness") || !strcmp(item, "current_rain") || !strcmp(item, "current_sunrise") || !strcmp(item, "current_sunset") || !strcmp(item, "forecast3_time") || !strcmp(item, "forecast3_temp") || !strcmp(item, "forecast6_time") || !strcmp(item, "forecast6_temp") || !strcmp(item, "forecast9_time") || !strcmp(item, "forecast9_temp") || !strcmp(item, "forecast12_time") || !strcmp(item, "forecast12_temp")) {
         return EXIT_SUCCESS;
     }
     return EXIT_FAILURE;
@@ -287,16 +313,24 @@ int method_exist(char *method) {
 }
 
 int get_request(int newsock, char *path, char *connection) {
-    int content_length=0;
+    char *temp_buf;
     if (!strcmp(path, "/items")) {
-        // Prepare items to send
-        //printf("Yes /items\n");
+        temp_buf = json_dumps(weather_json_struct, JSON_ENSURE_ASCII);
     }
     else if (!strncmp("/items/", path, 7)) {
-        // Prepare items to send
+        char *item_name = &path[7];
+        int i;
+        for (i = 0; i < 18; i++){
+            if(strcmp(item_name,choices_array[i])==0){
+                break;
+            }
+        }
+
+        temp_buf = json_dumps(json_array_get(weather_json_struct,i), JSON_ENSURE_ASCII);
+
     }
-    // First find content length
-    header_reply(newsock,connection,content_length);
+    header_reply(newsock, connection, strlen(temp_buf), temp_buf);
+    //body_reply(newsock, temp_buf);
     //Send data
     return EXIT_SUCCESS;
 }
@@ -306,14 +340,14 @@ int main(int argc, char *argv[]) { /* Server with Internet stream sockets */
         printf("Error in get_weather_data\n");
     }
 
-    if (read_config("./config.txt") == EXIT_FAILURE){
+    /*if (read_config("./config.txt") == EXIT_FAILURE){
         printf("Error in read_config\n");
-    }
+    }*/
 
-    char *a, *b, *c;
-    parse("GET /items/current_time HTTP/1.1\r\nHost: nicolas\r\nConnection: close\r\n\r\n", &a, &b, &c );
+//    char *a, *b, *c;
+//    parse("GET path HTTP/1.1\r\nHost: www.example.com\r\nTest: value\r\nConnection: close\r\n\r\n", &a, &b, &c );
 
-     printf("a=%s\nb=%s\nc=%s\n",a,b,c);
+    // printf("a=%s\nb=%s\nc=%s\n",a,b,c);
     // sleep(3000)
 
     int sock, newsock, serverlen, yes = 1; // clientlen;
@@ -371,11 +405,11 @@ int main(int argc, char *argv[]) { /* Server with Internet stream sockets */
                     perror("read");
                     exit(1);
                 }
-//                printf("BUF: %s\n\n", buf);
-//                parse(buf, &method, &path, &connection);
-//                printf("Method: %s\n", method);
-//                printf("Path: %s\n", path);
-//                printf("Connection: %s\n", connection);
+                printf("BUF: %s\n\n", buf);
+                parse(buf, &method, &path, &connection);
+                printf("Method: %s\n", method);
+                printf("Path: %s\n", path);
+                printf("Connection: %s\n", connection);
                 bzero(buf, sizeof buf);
                 if (method_exist(method) == EXIT_FAILURE) {
                     strcpy(buf, NOT_IMPLEMENTED);
@@ -385,16 +419,16 @@ int main(int argc, char *argv[]) { /* Server with Internet stream sockets */
                         get_request(newsock, path, connection);
                     }
                     else if (!strcmp(method, "HEAD")) {
-                        int length =0;
+                        int length = 0;
                         //Find header length function
-                        header_reply(newsock,connection,length);
+                        //header_reply(newsock, connection, length);
                     }
                     else if (!strcmp(method, "PUT")) {
-                        header_reply(newsock,connection,0);
+                        //header_reply(newsock, connection, 0);
                         // Call function to do action
                     }
                     else if (!strcmp(method, "DELETE")) {
-                        header_reply(newsock,connection,0);
+                        //header_reply(newsock, connection, 0);
                         // Call function to do action
                     }
                     //sprintf(buf, "Reply\n");
@@ -409,7 +443,7 @@ int main(int argc, char *argv[]) { /* Server with Internet stream sockets */
             } while (strcmp(connection, "close") != 0); /* Finish on "end" */
         }
             close(newsock); /* Close socket */
-        printf("Connection from %s is closed\n", rem -> h_name);
+        printf("Connection from somwone is closed\n" ); //rem -> h_name
         exit(0);
         }
     }

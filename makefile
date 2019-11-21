@@ -4,7 +4,7 @@ git:
 	git push -u origin master
 
 server:
-	gcc -Wall -o myserver server.c
+	gcc -Wall -o myserver server.c myjson.c -ljansson
 
 client:
 	gcc -Wall -o myclient client.c

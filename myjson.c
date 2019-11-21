@@ -1,12 +1,6 @@
-#include <stdlib.h>
-#include <string.h>
-#include <jansson.h>
-#include <stdio.h>
-
+#include "myjson.h"
 
 json_t *createJsonStruct(char *current, char *forecast){
-
-
 	json_t *root;
 	json_error_t error;
 
@@ -578,7 +572,7 @@ char * JsonHeaderRemover(char * buff){
 
 
 
-int main() {
+/*int main() {
 
 	char buff1[10000], buff2[100000];
 
@@ -605,4 +599,4 @@ int main() {
 
 	return 1;
 
-}
+}*/
