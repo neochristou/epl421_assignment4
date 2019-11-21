@@ -19,12 +19,10 @@ int DURATION;
 const char *OPENWEATHERMAP_SERVER = "api.openweathermap.org";
 int OPENWEATHERMAP_PORT = 80;
 const char* OPENWEATHERMAP_GET = "GET /data/2.5/%s?q=%s&units=metric&APPID=%s HTTP/1.1\nHost: api.openweathermap.org\nUser-Agent: myOpenHAB\nAccept: application/json\nConnection: close\n\n";
+
 const char* NOT_IMPLEMENTED = "HTTP/1.1 501 Not Implemented\r\nServer: my_webserver\r\nConnection: close\r\nContent-Type: text/plain\r\nContent-Length: 24\r\n\r\nMethod not implemented!";
-const char* SERVER_NAME_HEADER = "Server: my_webserver\r\n";
-const char* CONNECTION_CLOSE = "Connection: close\r\n";
-const char* CONNECTION_ALIVE = "Connection: keep-alive\r\n";
-const char* CONTENT_TYPE = "Content-Type: text/plain\r\n";
-const char *REPLY_OK = "HTTP/1.1 200 OK\r\n";
+const char *REPLY_OK_CLOSE = "HTTP/1.1 200 OK\r\nServer: my_webserver\r\nConnection: close\r\nContent-Type: text/plain\r\nContent-Length: ";
+const char *REPLY_OK_ALIVE = "HTTP/1.1 200 OK\r\nServer: my_webserver\r\nConnection: keep-alive\r\nContent-Type: text/plain\r\nContent-Length: ";
 const char* NOT_FOUND = "HTTP/1.1 404 NotFound\r\nServer: my_webserver\r\nConnection: keep-alive\r\nContent-Type: text/plain\r\nContent-Length: 16\r\n\r\nPath not found!";
 
 int parse(char *request, char **method, char **path, char **connection) {
@@ -189,8 +187,25 @@ int get_weather_data() {
     return EXIT_SUCCESS;
 }
 
+int header_reply(int newsock, char *connection, int content_length) {
+    char buf[256];
+    char content_header[10];
+    sprintf(content_header,"%d\r\n\r\n",content_length);
+    bzero(buf, sizeof buf);
+    if(!strcmp(connection,"close"))
+        strcpy(buf,REPLY_OK_CLOSE);
+    else
+        strcpy(buf,REPLY_OK_ALIVE);
+    strcat(buf,content_header);
+    if (write(newsock, buf, sizeof buf) < 0) { 
+        perror("write");
+        exit(1);
+    }
+    return EXIT_SUCCESS;
+}
+
 int item_exists(char *item) {
-    if (!strcmp(item, "station_id") || !strcmp(item, "current_time") || !strcmp(item, "current_temp") || !strcmp(item, "current_pressure") || !strcmp(item, "current_humidity") || !strcmp(item, "current_speed") || !strcmp(item, "current_cloudiness") || !strcmp(item, "current_rain") || !strcmp(item, "current_sunrise") || !strcmp(item, "current_sunset") || !strcmp(item, "forecast3_time") || !strcmp(item, "forecast3_temp") || !strcmp(item, "forecast6_time") || !strcmp(item, "forecast6_temp") || !strcmp(item, "forecast9_time") || !strcmp(item, "forecast9_temp") || !strcmp(item, "forecast12_time") || !strcmp(item, "forecast12_temp")) {
+    if (!strcmp(item,"c") || !strcmp(item, "station_id") || !strcmp(item, "current_time") || !strcmp(item, "current_temp") || !strcmp(item, "current_pressure") || !strcmp(item, "current_humidity") || !strcmp(item, "current_speed") || !strcmp(item, "current_cloudiness") || !strcmp(item, "current_rain") || !strcmp(item, "current_sunrise") || !strcmp(item, "current_sunset") || !strcmp(item, "forecast3_time") || !strcmp(item, "forecast3_temp") || !strcmp(item, "forecast6_time") || !strcmp(item, "forecast6_temp") || !strcmp(item, "forecast9_time") || !strcmp(item, "forecast9_temp") || !strcmp(item, "forecast12_time") || !strcmp(item, "forecast12_temp")) {
         return EXIT_SUCCESS;
     }
     return EXIT_FAILURE;
@@ -216,7 +231,8 @@ int method_exist(char *method) {
     return EXIT_FAILURE;
 }
 
-int get_request(char *method, char *path, char *connection) {
+int get_request(int newsock, char *path, char *connection) {
+    int content_length=0;
     if (!strcmp(path, "/items")) {
         // Prepare items to send
         //printf("Yes /items\n");
@@ -224,7 +240,9 @@ int get_request(char *method, char *path, char *connection) {
     else if (!strncmp("/items/", path, 7)) {
         // Prepare items to send
     }
-    //Send header and data
+    // First find content length
+    header_reply(newsock,connection,content_length);
+    //Send data
     return EXIT_SUCCESS;
 }
 
@@ -239,7 +257,7 @@ int main(int argc, char *argv[]) { /* Server with Internet stream sockets */
     // printf("a=%s\nb=%s\nc=%s\n",a,b,c);
     // sleep(3000)
 
-    int sock, newsock, serverlen, yes = 1, check = 1; // clientlen;
+    int sock, newsock, serverlen, yes = 1; // clientlen;
     socklen_t clientlen;
     char buf[256];
     struct sockaddr_in server, client;
@@ -306,25 +324,28 @@ int main(int argc, char *argv[]) { /* Server with Internet stream sockets */
                 printf("Method: %s\n", method);
                 printf("Path: %s\n", path);
                 printf("Connection: %s\n", connection);
-                int len = strlen(path);
                 bzero(buf, sizeof buf);
                 if (method_exist(method) == EXIT_FAILURE) {
                     strcpy(buf, NOT_IMPLEMENTED);
                 }
                 else if (path_exist(path) == EXIT_SUCCESS) {
                     if (!strcmp(method, "GET")) {
-                        check = get_request(method, path, connection);
+                        get_request(newsock, path, connection);
                     }
                     else if (!strcmp(method, "HEAD")) {
-
+                        int length =0;
+                        //Find header length function
+                        header_reply(newsock,connection,length);
                     }
                     else if (!strcmp(method, "PUT")) {
-
+                        header_reply(newsock,connection,0);
+                        // Call function to do action
                     }
                     else if (!strcmp(method, "DELETE")) {
-
+                        header_reply(newsock,connection,0);
+                        // Call function to do action
                     }
-                    sprintf(buf, "Reply\n");
+                    //sprintf(buf, "Reply\n");
                 }
                 else {
                     strcpy(buf, NOT_FOUND);
