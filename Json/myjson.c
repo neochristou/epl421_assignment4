@@ -536,6 +536,47 @@ json_t *createJsonStruct(char *current, char *forecast){
 }
 
 
+char * JsonHeaderRemover(char * buff){
+		
+	char token_buff[100000];
+	char *token;
+	char final_buff[100000];
+   
+	strcpy(token_buff,buff);
+	strcpy(final_buff,buff);
+
+
+   /* get the first token */
+   token = strtok(token_buff, " ");
+   
+   /* walk through other tokens */
+   token = strtok(NULL, " ");
+   
+
+   if(strcmp(token,"200")!=0){
+   		printf("Error\n" );
+   		return NULL;
+   }
+
+   token = strtok(final_buff, "\r\n\r\n");
+
+   while(1){
+   		token = strtok(NULL, "\r\n\r\n");
+   		if(*token=='{'){
+
+   			break;
+   		}
+   }
+
+
+   char *json_string = malloc((strlen(token)+1)*sizeof(char));
+   strcpy(json_string,token);
+
+   return json_string;
+
+}
+
+
 
 int main() {
 
@@ -548,7 +589,7 @@ int main() {
 	   fclose(fp);
 	}
 
-	//printf("%s\n",buff1 );
+
 	
 	fp = fopen("./myjason_sample_forecast.json", "r");
 
@@ -558,9 +599,10 @@ int main() {
 	   fclose(fp);
 	}
 
-	//printf("%s\n",buff2 );
-	printf("JSON:\n%s\n", json_dumps(createJsonStruct(buff1,buff2), JSON_ENSURE_ASCII) );
 	
+	printf("JSON:\n%s\n", json_dumps(createJsonStruct(JsonHeaderRemover(buff1),JsonHeaderRemover(buff2)), JSON_ENSURE_ASCII) );
+	
+
 	return 1;
 
 }
