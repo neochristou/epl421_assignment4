@@ -3,3 +3,7 @@
 THREADS=40
 # The Port number of the web server
 PORT=30000
+# API KEY for openweathermap
+API_KEY=64e92529c453f7621bd77a0948526d55
+# Location for openweathermap
+LOCATION=Nicosia,cy

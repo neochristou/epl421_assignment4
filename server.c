@@ -14,7 +14,7 @@
 char *API_KEY;
 char *LOCATION;
 int THREADS;
-int PORT = 2000;
+int PORT;
 int DURATION;
 const char *OPENWEATHERMAP_SERVER = "api.openweathermap.org";
 int OPENWEATHERMAP_PORT = 80;
@@ -96,7 +96,7 @@ int parse(char *request, char **method, char **path, char **connection) {
         return EXIT_FAILURE;
     }
     strncpy(*path, start_of_path, end_of_path - start_of_path);
-    (*path)[sizeof(*path)] = '\0';
+    (*path)[strlen(*path)] = '\0';
 
     char *name = NULL, *value_start = NULL, *value_end = NULL, *value = NULL;
     char *next_line = strchr(end_of_path, '\n') + 1;
@@ -310,10 +310,10 @@ int main(int argc, char *argv[]) { /* Server with Internet stream sockets */
         printf("Error in read_config\n");
     }
 
-//    char *a, *b, *c;
-//    parse("GET path HTTP/1.1\r\nHost: www.example.com\r\nTest: value\r\nConnection: close\r\n\r\n", &a, &b, &c );
+    char *a, *b, *c;
+    parse("GET /items/current_time HTTP/1.1\r\nHost: nicolas\r\nConnection: close\r\n\r\n", &a, &b, &c );
 
-    // printf("a=%s\nb=%s\nc=%s\n",a,b,c);
+     printf("a=%s\nb=%s\nc=%s\n",a,b,c);
     // sleep(3000)
 
     int sock, newsock, serverlen, yes = 1; // clientlen;
