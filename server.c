@@ -167,7 +167,6 @@ int connect_socket(const char *server_name, int port, int *sock) {
 }
 
 int get_weather_data() {
-
     char buf[256];
     int res;
     int sock1, sock2;
@@ -177,12 +176,6 @@ int get_weather_data() {
         return  EXIT_FAILURE;
     }
 
-    /*Get current weather data and save to json file*/
-    // int file_current = open("../current.json", O_WRONLY | O_CREAT | O_TRUNC, 0644);
-    // if (file_current < 0) {
-    //     perror("opening file");
-    //     return EXIT_FAILURE;
-    // }
     bzero(buf, sizeof buf); /* Initialize buffer */
     sprintf(buf , OPENWEATHERMAP_GET, "weather", LOCATION, API_KEY);
     if (write(sock1, buf, sizeof buf) < 0) {  /* Send message */
@@ -208,13 +201,6 @@ int get_weather_data() {
         printf("Error in connect socket\n");
         return  EXIT_FAILURE;
     }
-    /*Get forecast weather data and save to json file*/
-    // int file_forecast = open("../forecast.json", O_WRONLY | O_CREAT | O_TRUNC, 0644);
-    // if (file_forecast < 0) {
-    //     perror("opening file");
-    //     return EXIT_FAILURE;
-    // }
-
     bzero(buf, sizeof buf); /* Initialize buffer */
     sprintf(buf, OPENWEATHERMAP_GET, "forecast", LOCATION, API_KEY, "close");
 
@@ -237,11 +223,7 @@ int get_weather_data() {
     }
 
     close(sock2);
-
     //printf("%s\n",forecast_json_string);
-
-
-
     //json_t *createJsonStruct(char *, char *);
     char *current_json_string_noheader = JsonHeaderRemover(current_json_string);
     char *forecast_json_string_noheader = JsonHeaderRemover(forecast_json_string);
@@ -249,17 +231,11 @@ int get_weather_data() {
     weather_json_struct = createJsonStruct(current_json_string_noheader, forecast_json_string_noheader);
 
     //printf("JSON:\n%s\n", json_dumps(json_struct,JSON_ENSURE_ASCII));
-
     //printf("%s\n",forecast_json_string_noheader);
-
-
-
-
-
     return EXIT_SUCCESS;
 }
 
-int header_reply(int newsock, char *connection, int content_length, char *temp_buf) {
+int header_reply(int newsock, char *connection, int content_length, char *temp_buf, int body_reply) {
     char buf[25600];
     char content_header[10];
     sprintf(content_header, "%d\r\n\r\n", content_length);
@@ -269,7 +245,8 @@ int header_reply(int newsock, char *connection, int content_length, char *temp_b
     else
         strcpy(buf, REPLY_OK_ALIVE);
     strcat(buf, content_header);
-    strcat(buf, temp_buf);
+    if(body_reply)
+        strcat(buf, temp_buf);
     if (write(newsock, buf, sizeof buf) < 0) {
         perror("write");
         exit(1);
@@ -312,7 +289,7 @@ int method_exist(char *method) {
     return EXIT_FAILURE;
 }
 
-int get_request(int newsock, char *path, char *connection) {
+int get_request(int newsock, char *path, char *connection, int find_length) {
     char *temp_buf;
     if (!strcmp(path, "/items")) {
         temp_buf = json_dumps(weather_json_struct, JSON_ENSURE_ASCII);
@@ -325,11 +302,11 @@ int get_request(int newsock, char *path, char *connection) {
                 break;
             }
         }
-
         temp_buf = json_dumps(json_array_get(weather_json_struct,i), JSON_ENSURE_ASCII);
-
     }
-    header_reply(newsock, connection, strlen(temp_buf), temp_buf);
+    if(find_length)
+        return strlen(temp_buf);
+    header_reply(newsock, connection, strlen(temp_buf), temp_buf,1);
     //body_reply(newsock, temp_buf);
     //Send data
     return EXIT_SUCCESS;
@@ -416,12 +393,12 @@ int main(int argc, char *argv[]) { /* Server with Internet stream sockets */
                 }
                 else if (path_exist(path) == EXIT_SUCCESS) {
                     if (!strcmp(method, "GET")) {
-                        get_request(newsock, path, connection);
+                        get_request(newsock, path, connection,0);
                     }
                     else if (!strcmp(method, "HEAD")) {
                         int length = 0;
-                        //Find header length function
-                        //header_reply(newsock, connection, length);
+                        length=get_request(newsock, path, connection,1);
+                        header_reply(newsock, connection, length,NULL,0);
                     }
                     else if (!strcmp(method, "PUT")) {
                         //header_reply(newsock, connection, 0);
