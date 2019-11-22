@@ -306,10 +306,41 @@ int get_request(int newsock, char *path, char *connection, int find_length) {
     }
     if(find_length)
         return strlen(temp_buf);
+    //CHECK FOR NULLS
     header_reply(newsock, connection, strlen(temp_buf), temp_buf,1);
     //body_reply(newsock, temp_buf);
     //Send data
     return EXIT_SUCCESS;
+}
+
+int delete_request(int newsock, char *path, char *connection){
+    //char *temp_buf;
+    int i;
+    if (!strcmp(path, "/items")) {
+       
+        for (i = 0; i < 18; i++){
+            json_object_clear(json_array_get(weather_json_struct, i));
+        }
+
+        //temp_buf = json_dumps(weather_json_struct, JSON_ENSURE_ASCII);
+
+      //  printf("%s\n",temp_buf );
+        // sleep(3000);
+    }
+    //not done
+    else if (!strncmp("/items/", path, 7)) {
+        char *item_name = &path[7];
+        int i;
+        for (i = 0; i < 18; i++){
+            if(strcmp(item_name,choices_array[i])==0){
+                break;
+            }
+        }
+        //temp_buf = json_dumps(json_array_get(weather_json_struct,i), JSON_ENSURE_ASCII);
+    }
+
+    header_reply(newsock, connection, 0, NULL,0);
+
 }
 
 int main(int argc, char *argv[]) { /* Server with Internet stream sockets */
@@ -405,6 +436,7 @@ int main(int argc, char *argv[]) { /* Server with Internet stream sockets */
                         // Call function to do action
                     }
                     else if (!strcmp(method, "DELETE")) {
+                        delete_request(newsock,path,connection);
                         //header_reply(newsock, connection, 0);
                         // Call function to do action
                     }
