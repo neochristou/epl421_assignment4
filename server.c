@@ -84,7 +84,7 @@ int read_config(char *filename) {
     return EXIT_SUCCESS;
 }
 
-int parse(char *request, char **method, char **path, char **connection) {
+int parse(char *request, char **method, char **path, char **connection, char **body) {
     const char *start_of_path = strchr(request, ' ') + 1;
 
     if ((*method  = (char *) calloc((start_of_path - request - 1), sizeof(char))) == NULL) {
@@ -104,7 +104,12 @@ int parse(char *request, char **method, char **path, char **connection) {
 
     char *name = NULL, *value_start = NULL, *value_end = NULL, *value = NULL;
     char *next_line = strchr(end_of_path, '\n') + 1;
-    while ((strcmp(next_line, "\r\n") != 0) && next_line != NULL) {
+
+    char *last_bytes = malloc (3 * sizeof(char));
+    strncpy(last_bytes, next_line, 2);
+    last_bytes[3] = '\0';
+
+    while ((strcmp(last_bytes, "\r\n") != 0) && next_line != NULL) {
         value_start = strchr(next_line, ':');
         if ((name = (char *) calloc((value_start - next_line), sizeof(char))) == NULL) {
             perror("malloc name");
@@ -135,7 +140,12 @@ int parse(char *request, char **method, char **path, char **connection) {
         free(name);
         free(value);
         next_line = value_end + 2;
+
+        strncpy(last_bytes, next_line, 2);
+        last_bytes[3] = '\0';
     }
+    next_line += 2;
+    (*body) = next_line;
 
     return EXIT_SUCCESS;
 }
@@ -419,10 +429,10 @@ int main(int argc, char *argv[]) { /* Server with Internet stream sockets */
         printf("Error in read_config\n");
     }*/
 
-//    char *a, *b, *c;
-//    parse("GET path HTTP/1.1\r\nHost: www.example.com\r\nTest: value\r\nConnection: close\r\n\r\n", &a, &b, &c );
-
-    // printf("a=%s\nb=%s\nc=%s\n",a,b,c);
+//    char *a, *b, *c, *d = NULL;
+//    parse("GET path HTTP/1.1\r\nHost: www.example.com\r\nTest: value\r\nConnection: close\r\n\r\nThis is the body", &a, &b, &c, &d );
+//
+//     printf("a=%s\nb=%s\nc=%s\nd=%s\n",a,b,c,d);
     // sleep(3000)
 
     int sock, newsock, serverlen, yes = 1; // clientlen;
@@ -468,6 +478,7 @@ int main(int argc, char *argv[]) { /* Server with Internet stream sockets */
         char *method = NULL;
         char *path = NULL;
         char *connection = NULL;
+        char *body = NULL;
         switch (fork()) {  /* Create child for serving the client */
         case -1: {
             perror("fork");
@@ -481,10 +492,11 @@ int main(int argc, char *argv[]) { /* Server with Internet stream sockets */
                     exit(1);
                 }
                 printf("BUF: %s\n\n", buf);
-                parse(buf, &method, &path, &connection);
+                parse(buf, &method, &path, &connection, &body);
                 printf("Method: %s\n", method);
                 printf("Path: %s\n", path);
                 printf("Connection: %s\n", connection);
+                printf("Body: %s\n", body);
                 bzero(buf, sizeof buf);
                 int send = 0;
                 if (method_exist(method) == EXIT_FAILURE) {
