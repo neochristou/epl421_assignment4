@@ -56,14 +56,15 @@ int main(int argc, char *argv[]) {
     }
 
     bzero(buf, sizeof buf); /* Initialize buffer */
-    strcpy(buf,argv[1]);
-    strcat(buf," ");
-    strcat(buf,argv[2]);
-    strcat(buf, " HTTP/1.1\r\nHost: nicolas\r\nConnection: close\r\n\r\n"); //User-Agent: cpanta02Web\r\nAccept: application/json\r\n
-    strcat(buf,argv[3]);
+    // strcpy(buf,argv[1]);
+    // strcat(buf," ");
+    // strcat(buf,argv[2]);
+    // strcat(buf," ");
+    // strcat(buf, "HTTP/1.1\r\nHost: nicolas\r\nConnection: close\r\n\r\n"); //User-Agent: cpanta02Web\r\nAccept: application/json\r\n
+    // strcat(buf,argv[3]);
     // printf("%li\n", sizeof(buf) );
     // sleep(3000);
-
+    strcpy(buf,"GET /items HTTP/1.1\r\nHost: nicolas\r\nConnection: close\r\n\r\n");
     if (write(sock, buf, sizeof(buf)) < 0) { /* Send message */
         perror("write"); exit(1);
     }

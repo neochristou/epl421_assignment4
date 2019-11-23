@@ -497,7 +497,6 @@ int main(int argc, char *argv[]) { /* Server with Internet stream sockets */
                 printf("Path: %s\n", path);
                 printf("Connection: %s\n", connection);
                 printf("Body: %s\n", body);
-                sleep(1000);
                 bzero(buf, sizeof buf);
                 int send = 0;
                 if (method_exist(method) == EXIT_FAILURE) {
