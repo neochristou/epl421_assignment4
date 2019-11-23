@@ -1,0 +1,1 @@
+/usr/bin/cc -g   CMakeFiles/epl421_as4.dir/server.c.o  -o epl421_as4 
