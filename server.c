@@ -344,10 +344,8 @@ int get_request(int newsock, char *path, char *connection, int find_length) {
 }
 
 int delete_request(int newsock, char *path, char *connection) {
-    //char *temp_buf;
     int i;
     if (!strcmp(path, "/items")) {
-
         for (i = 0; i < 18; i++) {
             json_object_clear(json_array_get(weather_json_struct, i));
         }
@@ -361,6 +359,32 @@ int delete_request(int newsock, char *path, char *connection) {
             }
         }
         json_object_clear(json_array_get(weather_json_struct, i));
+    }
+    header_reply(newsock, connection, 0, NULL, 0);
+    return EXIT_SUCCESS;
+}
+
+int put_request(int newsock, char *path, char *connection,char *body ) {
+    int i;
+    json_error_t error;
+    if (!strcmp(path, "/items")) {
+        
+    }
+    else if (!strncmp("/items/", path, 7)) {
+        char *item_name = &path[7];
+        for (i = 0; i < 18; i++) {
+            if (strcmp(item_name, choices_array[i]) == 0) {
+                break;
+            }
+        }
+        json_t *new_obj = json_loads(body,0,&error);
+        if(!new_obj){
+            fprintf(stderr, "error on line %d %s\n",error.line,error.text);
+            exit(0);
+        }
+        json_object_clear(json_array_get(weather_json_struct, i));
+        json_object_update(json_array_get(weather_json_struct, i),new_obj);
+        //printf("%s\n",json_dumps(weather_json_struct, JSON_ENSURE_ASCII) );
     }
     header_reply(newsock, connection, 0, NULL, 0);
     return EXIT_SUCCESS;
@@ -383,7 +407,7 @@ int main(int argc, char *argv[]) { /* Server with Internet stream sockets */
 
     int sock, newsock, serverlen, yes = 1; // clientlen;
     socklen_t clientlen;
-    char buf[256];
+    char buf[256000];
     struct sockaddr_in server, client;
     struct sockaddr *serverptr, *clientptr;
     //struct hostent *rem;
@@ -457,15 +481,12 @@ int main(int argc, char *argv[]) { /* Server with Internet stream sockets */
                         header_reply(newsock, connection, length, NULL, 0);
                     }
                     else if (!strcmp(method, "PUT")) {
-                        //header_reply(newsock, connection, 0);
-                        // Call function to do action
+                        char *body="{\"hi\":35,\"hello\":98}";
+                        put_request(newsock, path, connection,body);
                     }
                     else if (!strcmp(method, "DELETE")) {
                         delete_request(newsock, path, connection);
-                        //header_reply(newsock, connection, 0);
-                        // Call function to do action
                     }
-                    //sprintf(buf, "Reply\n");
                 }
                 else {
                     strcpy(buf, NOT_FOUND);
