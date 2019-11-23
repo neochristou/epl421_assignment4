@@ -60,6 +60,7 @@ int main(int argc, char *argv[]) {
     strcat(buf," ");
     strcat(buf,argv[2]);
     strcat(buf, " HTTP/1.1\r\nHost: nicolas\r\nConnection: close\r\n\r\n"); //User-Agent: cpanta02Web\r\nAccept: application/json\r\n
+    strcat(buf,argv[3]);
     // printf("%li\n", sizeof(buf) );
     // sleep(3000);
 

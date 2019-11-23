@@ -497,6 +497,7 @@ int main(int argc, char *argv[]) { /* Server with Internet stream sockets */
                 printf("Path: %s\n", path);
                 printf("Connection: %s\n", connection);
                 printf("Body: %s\n", body);
+                sleep(1000);
                 bzero(buf, sizeof buf);
                 int send = 0;
                 if (method_exist(method) == EXIT_FAILURE) {
@@ -513,7 +514,7 @@ int main(int argc, char *argv[]) { /* Server with Internet stream sockets */
                         header_reply(newsock, connection, length, NULL, 0);
                     }
                     else if (!strcmp(method, "PUT")) {
-                        char *body = "[{\"link\": \"http://myserver.org:8080/items/station_id\", \"state\": \"15000\", \"stateDescription\": {\"pattern\": \"%s\", \"readonly\": true, \"options\": []}, \"editable\": true, \"type\": \"String\", \"name\": \"WeatherAndForecast_Station_StationId\", \"label\": \"Station Id\", \"tags\": [], \"groupNames\": []}]";
+                        //char *body = "[{\"link\": \"http://myserver.org:8080/items/station_id\", \"state\": \"15000\", \"stateDescription\": {\"pattern\": \"%s\", \"readonly\": true, \"options\": []}, \"editable\": true, \"type\": \"String\", \"name\": \"WeatherAndForecast_Station_StationId\", \"label\": \"Station Id\", \"tags\": [], \"groupNames\": []}]";
                         put_request(newsock, path, connection, body);
                     }
                     else if (!strcmp(method, "DELETE")) {
