@@ -247,7 +247,6 @@ int item_not_found_reply(int newsock) {
 }
 
 int header_reply(int newsock, char *connection, int content_length, char *temp_buf, int body_reply) {
-    printf("test2\n");
     char buf[25600];
     char content_header[10];
     sprintf(content_header, "%d\r\n\r\n", content_length);
@@ -302,18 +301,18 @@ int method_exist(char *method) {
 }
 
 int get_request(int newsock, char *path, char *connection, int find_length) {
-    char *temp_buf = malloc(sizeof(char)*100000);
-    bzero(temp_buf,100000);
-    int i,count=0;
+    char *temp_buf = malloc(sizeof(char) * 100000);
+    bzero(temp_buf, 100000);
+    int i, count = 0;
     if (!strcmp(path, "/items")) {
         for (i = 0; i < 18; i++) {
             char *temp_buf2 = json_dumps(json_array_get(weather_json_struct, i), JSON_ENSURE_ASCII);
-            if(strcmp(temp_buf2, "{}")){
-                strcat(temp_buf,temp_buf2);
+            if (strcmp(temp_buf2, "{}")) {
+                strcat(temp_buf, temp_buf2);
                 count++;
             }
         }
-        if(count==0){
+        if (count == 0) {
             item_not_found_reply(newsock);
             free(temp_buf);
             return EXIT_FAILURE;
@@ -334,7 +333,7 @@ int get_request(int newsock, char *path, char *connection, int find_length) {
             return EXIT_FAILURE;
         }
     }
-    if (find_length){
+    if (find_length) {
         free(temp_buf);
         return strlen(temp_buf);
     }
@@ -364,11 +363,37 @@ int delete_request(int newsock, char *path, char *connection) {
     return EXIT_SUCCESS;
 }
 
-int put_request(int newsock, char *path, char *connection,char *body ) {
-    int i;
+int put_request(int newsock, char *path, char *connection, char *body ) {
+    int i, j,flag_not_found=0;
     json_error_t error;
+    json_t *new_obj = json_loads(body, 0, &error);
+    if (!new_obj) {
+        fprintf(stderr, "error on line %d %s\n", error.line, error.text);
+        exit(0);
+    }
     if (!strcmp(path, "/items")) {
-        
+        if (!json_is_array(new_obj)) {
+            fprintf(stderr, "json file is not a list\n");
+            exit(0);
+        }
+        if (json_array_size(new_obj) > 18 || json_array_size(new_obj) <= 0) {
+            fprintf(stderr, "json has not enough or more than 18 items\n");
+            exit(0);
+        }
+        for (i = 0; i < json_array_size(new_obj); i++) {
+            const char *tok = json_string_value(json_object_get(json_array_get(new_obj, i), "link"));
+            char *last = strrchr(tok, '/');
+            last++;
+            for (j = 0; j < 18; j++) {
+                if (strcmp(last, choices_array[j]) == 0) {
+                    flag_not_found++;
+                    json_object_clear(json_array_get(weather_json_struct, j));
+                    json_object_update(json_array_get(weather_json_struct, j), json_array_get(new_obj,i));
+                    break;
+                }
+            }
+        }
+        printf("%s\n",json_dumps(weather_json_struct, JSON_ENSURE_ASCII) );
     }
     else if (!strncmp("/items/", path, 7)) {
         char *item_name = &path[7];
@@ -377,13 +402,8 @@ int put_request(int newsock, char *path, char *connection,char *body ) {
                 break;
             }
         }
-        json_t *new_obj = json_loads(body,0,&error);
-        if(!new_obj){
-            fprintf(stderr, "error on line %d %s\n",error.line,error.text);
-            exit(0);
-        }
         json_object_clear(json_array_get(weather_json_struct, i));
-        json_object_update(json_array_get(weather_json_struct, i),new_obj);
+        json_object_update(json_array_get(weather_json_struct, i), new_obj);
         //printf("%s\n",json_dumps(weather_json_struct, JSON_ENSURE_ASCII) );
     }
     header_reply(newsock, connection, 0, NULL, 0);
@@ -481,8 +501,8 @@ int main(int argc, char *argv[]) { /* Server with Internet stream sockets */
                         header_reply(newsock, connection, length, NULL, 0);
                     }
                     else if (!strcmp(method, "PUT")) {
-                        char *body="{\"hi\":35,\"hello\":98}";
-                        put_request(newsock, path, connection,body);
+                        char *body = "[{\"link\": \"http://myserver.org:8080/items/station_id\", \"state\": \"15000\", \"stateDescription\": {\"pattern\": \"%s\", \"readonly\": true, \"options\": []}, \"editable\": true, \"type\": \"String\", \"name\": \"WeatherAndForecast_Station_StationId\", \"label\": \"Station Id\", \"tags\": [], \"groupNames\": []}]";
+                        put_request(newsock, path, connection, body);
                     }
                     else if (!strcmp(method, "DELETE")) {
                         delete_request(newsock, path, connection);
