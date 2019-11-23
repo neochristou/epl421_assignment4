@@ -1,4 +1,7 @@
 #include "myjson.h"
+#include <unistd.h>
+#include <time.h>
+
 
 json_t *createJsonStruct(char *current, char *forecast){
 	json_t *root;
@@ -26,15 +29,15 @@ json_t *createJsonStruct(char *current, char *forecast){
 	JsonArray[2] =  json_object_get(json_object_get(root,"main"),"temp");
 	JsonArray[3] =  json_object_get(json_object_get(root,"main"),"pressure");
 	JsonArray[4] =  json_object_get(json_object_get(root,"main"),"humidity");
-	JsonArray[5] =  json_object_get(json_object_get(root,"wind"),"currentSpeed");
+	JsonArray[5] =  json_object_get(json_object_get(root,"wind"),"speed");
 	JsonArray[6] =  json_object_get(json_object_get(root,"clouds"),"all");
 	//JsonArray[7] =  json_object_get(json_object_get(root,"main"),"temp");
 	JsonArray[8] =  json_object_get(json_object_get(root,"sys"),"sunrise");
 	JsonArray[9] =  json_object_get(json_object_get(root,"sys"),"sunset");
 
 
-
-
+	// printf("dt:%lld\nsunrise:%lld\nsunset:%lld\n",json_integer_value(JsonArray[1]),json_integer_value(JsonArray[8]),json_integer_value(JsonArray[9]) );
+	// sleep(3000);
 	//printf("%lld\n",json_integer_value(JsonArray[0]) );
 	//printf("%.2f\n", json_real_value(JsonArray[2]) );
 	
@@ -52,7 +55,10 @@ json_t *createJsonStruct(char *current, char *forecast){
 	obj = json_object();
 	
 	json_object_set_new(obj,"link",json_string("http://myserver.org:8080/items/station_id"));
-	json_object_set_new(obj,"state", JsonArray[0]);
+
+	char temp_state[100];
+	sprintf(temp_state,"%lld",json_integer_value(JsonArray[0]));
+	json_object_set_new(obj,"state", json_string(temp_state) );
 
 	stateDescriptionObj = json_object();
 	json_object_set_new(stateDescriptionObj,"pattern", json_string("%s"));
@@ -76,7 +82,20 @@ json_t *createJsonStruct(char *current, char *forecast){
 	obj = json_object();
 	
 	json_object_set_new(obj,"link",json_string("http://myserver.org:8080/items/current_time"));
-	json_object_set_new(obj,"state", JsonArray[1]);
+
+
+	time_t curtime = json_integer_value(JsonArray[1]);
+
+    struct tm  ts;
+    char time_buf[80];
+
+    
+    ts = *gmtime(&curtime);
+    strftime(time_buf, sizeof(time_buf), "%Y-%m-%dT%H:%M:%S.000%z", &ts);
+    
+
+
+	json_object_set_new(obj,"state", json_string(time_buf) );
 
 	stateDescriptionObj = json_object();
 	json_object_set_new(stateDescriptionObj,"pattern", json_string("%1$tY-%1$tm-%1$td %1$tH:%1$tM:%1$tS"));
@@ -100,7 +119,13 @@ json_t *createJsonStruct(char *current, char *forecast){
 	obj = json_object();
 	
 	json_object_set_new(obj,"link",json_string("http://myserver.org:8080/items/current_temp"));
-	json_object_set_new(obj,"state", JsonArray[2]);
+
+	bzero(temp_state,100);
+
+	sprintf(temp_state,"%.2f °C",json_real_value(JsonArray[2]));
+	json_object_set_new(obj,"state", json_string(temp_state) );
+
+	//json_object_set_new(obj,"state", JsonArray[2]);
 
 	stateDescriptionObj = json_object();
 	json_object_set_new(stateDescriptionObj,"pattern", json_string("%.1f %unit%"));
@@ -124,7 +149,10 @@ json_t *createJsonStruct(char *current, char *forecast){
 	obj = json_object();
 	
 	json_object_set_new(obj,"link",json_string("http://myserver.org:8080/items/current_pressure"));
-	json_object_set_new(obj,"state", JsonArray[3]);
+	bzero(temp_state,100);
+
+	sprintf(temp_state,"%.1f hPa",(float)json_integer_value(JsonArray[3]));
+	json_object_set_new(obj,"state", json_string(temp_state) );
 
 	stateDescriptionObj = json_object();
 	json_object_set_new(stateDescriptionObj,"pattern", json_string("%.3f %unit%"));
@@ -148,7 +176,11 @@ json_t *createJsonStruct(char *current, char *forecast){
 	obj = json_object();
 	
 	json_object_set_new(obj,"link",json_string("http://myserver.org:8080/items/current_humidity"));
-	json_object_set_new(obj,"state", JsonArray[4]);
+
+	bzero(temp_state,100);
+
+	sprintf(temp_state,"%lld %%",json_integer_value(JsonArray[4]));
+	json_object_set_new(obj,"state", json_string(temp_state) );
 
 	stateDescriptionObj = json_object();
 	json_object_set_new(stateDescriptionObj,"pattern", json_string("%.0f %%"));
@@ -172,7 +204,11 @@ json_t *createJsonStruct(char *current, char *forecast){
 	obj = json_object();
 	
 	json_object_set_new(obj,"link",json_string("http://myserver.org:8080/items/current_speed"));
-	json_object_set_new(obj,"state", JsonArray[5]);
+
+	bzero(temp_state,100);
+
+	sprintf(temp_state,"%.1f m/s",json_real_value(JsonArray[5]));
+	json_object_set_new(obj,"state", json_string(temp_state) );
 
 	stateDescriptionObj = json_object();
 	json_object_set_new(stateDescriptionObj,"pattern", json_string("%.1f %unit%"));
@@ -196,7 +232,11 @@ json_t *createJsonStruct(char *current, char *forecast){
 	obj = json_object();
 	
 	json_object_set_new(obj,"link",json_string("http://myserver.org:8080/items/current_cloudiness"));
-	json_object_set_new(obj,"state", JsonArray[6]);
+
+	bzero(temp_state,100);
+
+	sprintf(temp_state,"%lld %%",json_integer_value(JsonArray[6]));
+	json_object_set_new(obj,"state", json_string(temp_state) );
 
 	stateDescriptionObj = json_object();
 	json_object_set_new(stateDescriptionObj,"minimum", json_integer(0));
@@ -247,7 +287,19 @@ json_t *createJsonStruct(char *current, char *forecast){
 	obj = json_object();
 	
 	json_object_set_new(obj,"link",json_string("http://myserver.org:8080/items/current_sunrise"));
-	json_object_set_new(obj,"state", JsonArray[8]);
+
+	time_t curtime_sunset = json_integer_value(JsonArray[8]);
+
+    struct tm  ts_sunrise;
+
+    char temp_buf_sunrise[80];
+
+    ts_sunrise = *gmtime(&curtime_sunset);
+    strftime(temp_buf_sunrise, sizeof(temp_buf_sunrise), "%Y-%m-%dT%H:%M:%S.000%z", &ts_sunrise);
+    
+
+
+	json_object_set_new(obj,"state", json_string(time_buf) );
 
 	stateDescriptionObj = json_object();
 	json_object_set_new(stateDescriptionObj,"pattern", json_string("%d"));
@@ -271,7 +323,18 @@ json_t *createJsonStruct(char *current, char *forecast){
 	obj = json_object();
 	
 	json_object_set_new(obj,"link",json_string("http://myserver.org:8080/items/current_sunset"));
-	json_object_set_new(obj,"state", JsonArray[9]);
+	
+	curtime = json_integer_value(JsonArray[9]);
+
+    struct tm  ts_sunset;
+
+    bzero(time_buf,80);
+
+    
+    ts_sunset = *gmtime(&curtime);
+    strftime(time_buf, sizeof(time_buf), "%Y-%m-%dT%H:%M:%S.000%z", &ts_sunset);
+
+    json_object_set_new(obj,"state", json_string(time_buf) );
 
 	stateDescriptionObj = json_object();
 	json_object_set_new(stateDescriptionObj,"pattern", json_string("%d"));
@@ -328,7 +391,19 @@ json_t *createJsonStruct(char *current, char *forecast){
 	obj = json_object();
 	
 	json_object_set_new(obj,"link",json_string("http://myserver.org:8080/items/forecast3_time"));
-	json_object_set_new(obj,"state", JsonArray[10]);
+
+	curtime = json_integer_value(JsonArray[10]);
+
+    struct tm  ts_3;
+
+    bzero(time_buf,80);
+
+    
+    ts_3 = *gmtime(&curtime);
+    strftime(time_buf, sizeof(time_buf), "%Y-%m-%dT%H:%M:%S.000%z", &ts_3);
+
+
+	json_object_set_new(obj,"state", json_string(time_buf));
 
 	stateDescriptionObj = json_object();
 	json_object_set_new(stateDescriptionObj,"pattern", json_string("%1$tY-%1$tm-%1$td %1$tH:%1$tM:%1$tS"));
@@ -353,7 +428,11 @@ json_t *createJsonStruct(char *current, char *forecast){
 	obj = json_object();
 	
 	json_object_set_new(obj,"link",json_string("http://myserver.org:8080/items/forecast3_temp"));
-	json_object_set_new(obj,"state", JsonArray[11]);
+
+	bzero(temp_state,100);
+
+	sprintf(temp_state,"%.2f °C",json_real_value(JsonArray[11]));
+	json_object_set_new(obj,"state", json_string(temp_state) );
 
 	stateDescriptionObj = json_object();
 	json_object_set_new(stateDescriptionObj,"pattern", json_string("%.1f %unit%"));
@@ -378,7 +457,19 @@ json_t *createJsonStruct(char *current, char *forecast){
 	obj = json_object();
 	
 	json_object_set_new(obj,"link",json_string("http://myserver.org:8080/items/forecast6_time"));
-	json_object_set_new(obj,"state", JsonArray[12]);
+	
+	curtime = json_integer_value(JsonArray[12]);
+
+    struct tm  ts_6;
+
+    bzero(time_buf,80);
+
+    
+    ts_6 = *gmtime(&curtime);
+    strftime(time_buf, sizeof(time_buf), "%Y-%m-%dT%H:%M:%S.000%z", &ts_6);
+
+
+	json_object_set_new(obj,"state", json_string(time_buf));
 
 	stateDescriptionObj = json_object();
 	json_object_set_new(stateDescriptionObj,"pattern", json_string("%1$tY-%1$tm-%1$td %1$tH:%1$tM:%1$tS"));
@@ -403,7 +494,11 @@ json_t *createJsonStruct(char *current, char *forecast){
 	obj = json_object();
 	
 	json_object_set_new(obj,"link",json_string("http://myserver.org:8080/items/forecast6_temp"));
-	json_object_set_new(obj,"state", JsonArray[13]);
+	
+	bzero(temp_state,100);
+
+	sprintf(temp_state,"%.2f °C",json_real_value(JsonArray[13]));
+	json_object_set_new(obj,"state", json_string(temp_state) );
 
 	stateDescriptionObj = json_object();
 	json_object_set_new(stateDescriptionObj,"pattern", json_string("%.1f %unit%"));
@@ -428,7 +523,20 @@ json_t *createJsonStruct(char *current, char *forecast){
 	obj = json_object();
 	
 	json_object_set_new(obj,"link",json_string("http://myserver.org:8080/items/forecast9_time"));
-	json_object_set_new(obj,"state", JsonArray[14]);
+	
+
+	curtime = json_integer_value(JsonArray[14]);
+
+    struct tm  ts_9;
+
+    bzero(time_buf,80);
+
+    
+    ts_9 = *gmtime(&curtime);
+    strftime(time_buf, sizeof(time_buf), "%Y-%m-%dT%H:%M:%S.000%z", &ts_9);
+
+
+	json_object_set_new(obj,"state", json_string(time_buf));
 
 	stateDescriptionObj = json_object();
 	json_object_set_new(stateDescriptionObj,"pattern", json_string("%1$tY-%1$tm-%1$td %1$tH:%1$tM:%1$tS"));
@@ -453,7 +561,11 @@ json_t *createJsonStruct(char *current, char *forecast){
 	obj = json_object();
 	
 	json_object_set_new(obj,"link",json_string("http://myserver.org:8080/items/forecast9_temp"));
-	json_object_set_new(obj,"state", JsonArray[15]);
+	
+	bzero(temp_state,100);
+
+	sprintf(temp_state,"%.2f °C",json_real_value(JsonArray[15]));
+	json_object_set_new(obj,"state", json_string(temp_state) );
 
 	stateDescriptionObj = json_object();
 	json_object_set_new(stateDescriptionObj,"pattern", json_string("%.1f %unit%"));
@@ -478,7 +590,18 @@ json_t *createJsonStruct(char *current, char *forecast){
 	obj = json_object();
 	
 	json_object_set_new(obj,"link",json_string("http://myserver.org:8080/items/forecast12_time"));
-	json_object_set_new(obj,"state", JsonArray[16]);
+	
+	curtime = json_integer_value(JsonArray[16]);
+
+    struct tm  ts_12;
+
+    bzero(time_buf,80);
+
+    ts_12 = *gmtime(&curtime);
+    strftime(time_buf, sizeof(time_buf), "%Y-%m-%dT%H:%M:%S.000%z", &ts_12);
+
+
+	json_object_set_new(obj,"state", json_string(time_buf));
 
 	stateDescriptionObj = json_object();
 	json_object_set_new(stateDescriptionObj,"pattern", json_string("%1$tY-%1$tm-%1$td %1$tH:%1$tM:%1$tS"));
@@ -503,7 +626,11 @@ json_t *createJsonStruct(char *current, char *forecast){
 	obj = json_object();
 	
 	json_object_set_new(obj,"link",json_string("http://myserver.org:8080/items/forecast12_temp"));
-	json_object_set_new(obj,"state", JsonArray[17]);
+	
+	bzero(temp_state,100);
+
+	sprintf(temp_state,"%.2f °C",json_real_value(JsonArray[17]));
+	json_object_set_new(obj,"state", json_string(temp_state) );
 
 	stateDescriptionObj = json_object();
 	json_object_set_new(stateDescriptionObj,"pattern", json_string("%.1f %unit%"));
@@ -572,31 +699,37 @@ char * JsonHeaderRemover(char * buff){
 
 
 
-/*int main() {
-
-	char buff1[10000], buff2[100000];
-
-	FILE *fp = fopen("./myjason_sample.json", "r");
-	if(fp != NULL)
-	{
-	   fread(&buff1, sizeof(char), 10000, fp);
-	   fclose(fp);
-	}
+// int main() {
 
 
-	
-	fp = fopen("./myjason_sample_forecast.json", "r");
 
-	if(fp != NULL)
-	{
-	   fread(&buff2, sizeof(char), 100000, fp);
-	   fclose(fp);
-	}
+// 	char buff1[10000], buff2[100000];
+
+// 	FILE *fp = fopen("./myjason_sample.json", "r");
+// 	if(fp != NULL)
+// 	{
+// 	   fread(&buff1, sizeof(char), 10000, fp);
+// 	   fclose(fp);
+// 	}
+
 
 	
-	printf("JSON:\n%s\n", json_dumps(createJsonStruct(JsonHeaderRemover(buff1),JsonHeaderRemover(buff2)), JSON_ENSURE_ASCII) );
+// 	fp = fopen("./myjason_sample_forecast.json", "r");
+
+// 	if(fp != NULL)
+// 	{
+// 	   fread(&buff2, sizeof(char), 100000, fp);
+// 	   fclose(fp);
+// 	}
+
+	
+// 	printf("JSON:\n%s\n", json_dumps(createJsonStruct(buff1,buff2), JSON_ENSURE_ASCII) );
+
+	
 	
 
-	return 1;
+	
 
-}*/
+// 	return 1;
+
+// }
