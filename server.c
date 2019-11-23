@@ -26,7 +26,8 @@ const char* OPENWEATHERMAP_GET = "GET /data/2.5/%s?q=%s&units=metric&APPID=%s HT
 const char* NOT_IMPLEMENTED = "HTTP/1.1 501 Not Implemented\r\nServer: my_webserver\r\nConnection: close\r\nContent-Type: text/plain\r\nContent-Length: 24\r\n\r\nMethod not implemented!";
 const char *REPLY_OK_CLOSE = "HTTP/1.1 200 OK\r\nServer: my_webserver\r\nConnection: close\r\nContent-Type: text/plain\r\nContent-Length: ";
 const char *REPLY_OK_ALIVE = "HTTP/1.1 200 OK\r\nServer: my_webserver\r\nConnection: keep-alive\r\nContent-Type: text/plain\r\nContent-Length: ";
-const char* NOT_FOUND = "HTTP/1.1 404 NotFound\r\nServer: my_webserver\r\nConnection: keep-alive\r\nContent-Type: text/plain\r\nContent-Length: 16\r\n\r\nPath not found!";
+const char* NOT_FOUND = "HTTP/1.1 404 NotFound\r\nServer: my_webserver\r\nConnection: close\r\nContent-Type: text/plain\r\nContent-Length: 16\r\n\r\nPath not found!";
+const char* ITEM_NOT_FOUND = "HTTP/1.1 404 NotFound\r\nServer: my_webserver\r\nConnection: close\r\nContent-Type: text/plain\r\nContent-Length: 16\r\n\r\nItem not found!";
 
 int read_config(char *filename) {
     FILE *config_file;
@@ -235,7 +236,18 @@ int get_weather_data() {
     return EXIT_SUCCESS;
 }
 
+int item_not_found_reply(int newsock) {
+    char buf[256];
+    strcpy(buf, ITEM_NOT_FOUND);
+    if (write(newsock, buf, sizeof buf) < 0) {
+        perror("write");
+        exit(1);
+    }
+    return EXIT_SUCCESS;
+}
+
 int header_reply(int newsock, char *connection, int content_length, char *temp_buf, int body_reply) {
+    printf("test2\n");
     char buf[25600];
     char content_header[10];
     sprintf(content_header, "%d\r\n\r\n", content_length);
@@ -245,7 +257,7 @@ int header_reply(int newsock, char *connection, int content_length, char *temp_b
     else
         strcpy(buf, REPLY_OK_ALIVE);
     strcat(buf, content_header);
-    if(body_reply)
+    if (body_reply)
         strcat(buf, temp_buf);
     if (write(newsock, buf, sizeof buf) < 0) {
         perror("write");
@@ -290,57 +302,68 @@ int method_exist(char *method) {
 }
 
 int get_request(int newsock, char *path, char *connection, int find_length) {
-    char *temp_buf;
+    char *temp_buf = malloc(sizeof(char)*100000);
+    bzero(temp_buf,100000);
+    int i,count=0;
     if (!strcmp(path, "/items")) {
-        temp_buf = json_dumps(weather_json_struct, JSON_ENSURE_ASCII);
+        for (i = 0; i < 18; i++) {
+            char *temp_buf2 = json_dumps(json_array_get(weather_json_struct, i), JSON_ENSURE_ASCII);
+            if(strcmp(temp_buf2, "{}")){
+                strcat(temp_buf,temp_buf2);
+                count++;
+            }
+        }
+        if(count==0){
+            item_not_found_reply(newsock);
+            free(temp_buf);
+            return EXIT_FAILURE;
+        }
     }
     else if (!strncmp("/items/", path, 7)) {
         char *item_name = &path[7];
-        int i;
-        for (i = 0; i < 18; i++){
-            if(strcmp(item_name,choices_array[i])==0){
+        for (i = 0; i < 18; i++) {
+            if (strcmp(item_name, choices_array[i]) == 0) {
                 break;
             }
         }
-        temp_buf = json_dumps(json_array_get(weather_json_struct,i), JSON_ENSURE_ASCII);
+        //json_object_clear(json_array_get(weather_json_struct, i));
+        temp_buf = json_dumps(json_array_get(weather_json_struct, i), JSON_ENSURE_ASCII);
+        if (!strcmp(temp_buf, "{}")/*strlen(temp_buf)==2*/) {
+            item_not_found_reply(newsock);
+            free(temp_buf);
+            return EXIT_FAILURE;
+        }
     }
-    if(find_length)
+    if (find_length){
+        free(temp_buf);
         return strlen(temp_buf);
-    //CHECK FOR NULLS
-    header_reply(newsock, connection, strlen(temp_buf), temp_buf,1);
-    //body_reply(newsock, temp_buf);
-    //Send data
+    }
+    header_reply(newsock, connection, strlen(temp_buf), temp_buf, 1);
+    free(temp_buf);
     return EXIT_SUCCESS;
 }
 
-int delete_request(int newsock, char *path, char *connection){
+int delete_request(int newsock, char *path, char *connection) {
     //char *temp_buf;
     int i;
     if (!strcmp(path, "/items")) {
-       
-        for (i = 0; i < 18; i++){
+
+        for (i = 0; i < 18; i++) {
             json_object_clear(json_array_get(weather_json_struct, i));
         }
-
-        //temp_buf = json_dumps(weather_json_struct, JSON_ENSURE_ASCII);
-
-      //  printf("%s\n",temp_buf );
-        // sleep(3000);
     }
-    //not done
     else if (!strncmp("/items/", path, 7)) {
         char *item_name = &path[7];
         int i;
-        for (i = 0; i < 18; i++){
-            if(strcmp(item_name,choices_array[i])==0){
+        for (i = 0; i < 18; i++) {
+            if (strcmp(item_name, choices_array[i]) == 0) {
                 break;
             }
         }
-        //temp_buf = json_dumps(json_array_get(weather_json_struct,i), JSON_ENSURE_ASCII);
+        json_object_clear(json_array_get(weather_json_struct, i));
     }
-
-    header_reply(newsock, connection, 0, NULL,0);
-
+    header_reply(newsock, connection, 0, NULL, 0);
+    return EXIT_SUCCESS;
 }
 
 int main(int argc, char *argv[]) { /* Server with Internet stream sockets */
@@ -363,7 +386,7 @@ int main(int argc, char *argv[]) { /* Server with Internet stream sockets */
     char buf[256];
     struct sockaddr_in server, client;
     struct sockaddr *serverptr, *clientptr;
-    struct hostent *rem;
+    //struct hostent *rem;
 
     if ((sock = socket(AF_INET, SOCK_STREAM, 0)) < 0) {  /* Create socket */
         perror("socket");
@@ -419,24 +442,26 @@ int main(int argc, char *argv[]) { /* Server with Internet stream sockets */
                 printf("Path: %s\n", path);
                 printf("Connection: %s\n", connection);
                 bzero(buf, sizeof buf);
+                int send = 0;
                 if (method_exist(method) == EXIT_FAILURE) {
                     strcpy(buf, NOT_IMPLEMENTED);
+                    send = 1;
                 }
                 else if (path_exist(path) == EXIT_SUCCESS) {
                     if (!strcmp(method, "GET")) {
-                        get_request(newsock, path, connection,0);
+                        get_request(newsock, path, connection, 0);
                     }
                     else if (!strcmp(method, "HEAD")) {
                         int length = 0;
-                        length=get_request(newsock, path, connection,1);
-                        header_reply(newsock, connection, length,NULL,0);
+                        length = get_request(newsock, path, connection, 1);
+                        header_reply(newsock, connection, length, NULL, 0);
                     }
                     else if (!strcmp(method, "PUT")) {
                         //header_reply(newsock, connection, 0);
                         // Call function to do action
                     }
                     else if (!strcmp(method, "DELETE")) {
-                        delete_request(newsock,path,connection);
+                        delete_request(newsock, path, connection);
                         //header_reply(newsock, connection, 0);
                         // Call function to do action
                     }
@@ -444,14 +469,15 @@ int main(int argc, char *argv[]) { /* Server with Internet stream sockets */
                 }
                 else {
                     strcpy(buf, NOT_FOUND);
+                    send = 1;
                 }
-                if (write(newsock, buf, sizeof buf) < 0) { /* Send message */
+                if (send && write(newsock, buf, sizeof buf) < 0) { /* Send message */
                     perror("write");
                     exit(1);
                 }
             } while (strcmp(connection, "close") != 0); /* Finish on "end" */
         }
-            close(newsock); /* Close socket */
+        close(newsock);
         printf("Connection from somwone is closed\n" ); //rem -> h_name
         exit(0);
         }

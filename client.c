@@ -9,7 +9,7 @@
 #include <fcntl.h>
 
 int PORT = 2000;
-char *URL = "172.20.234.101";
+char *URL = "localhost";
 
 int connect_socket(const char *server_name, int port, int *sock) {
     int serverlen;
@@ -42,11 +42,9 @@ int connect_socket(const char *server_name, int port, int *sock) {
     return EXIT_SUCCESS;
 }
 
-int main() {
+int main(int argc, char *argv[]) {
 
     char buf[25600];
-
-    int res;
     int sock;
 
     if (connect_socket(URL, PORT, &sock) == EXIT_SUCCESS) {
@@ -58,8 +56,10 @@ int main() {
     }
 
     bzero(buf, sizeof buf); /* Initialize buffer */
-
-    strcpy(buf, "GET /items HTTP/1.1\r\nHost: nicolas\r\nConnection: close\r\n\r\n"); //User-Agent: cpanta02Web\r\nAccept: application/json\r\n
+    strcpy(buf,argv[1]);
+    strcat(buf," ");
+    strcat(buf,argv[2]);
+    strcat(buf, " HTTP/1.1\r\nHost: nicolas\r\nConnection: close\r\n\r\n"); //User-Agent: cpanta02Web\r\nAccept: application/json\r\n
     // printf("%li\n", sizeof(buf) );
     // sleep(3000);
 
@@ -74,7 +74,7 @@ int main() {
     }
     printf("\n%s\n", buf);
 
-    while ( read(sock, buf, sizeof(buf)) < 0) {
+    if ( read(sock, buf, sizeof(buf)) < 0) {
         
         printf("%s\n",buf );
         bzero(buf, sizeof buf); /* Initialize buffer */
