@@ -22,11 +22,11 @@ char *choices_array[18] = {"station_id", "current_time", "current_temp", "curren
                           };
 json_t *weather_json_struct = NULL;
 
-char *API_KEY = "64e92529c453f7621bd77a0948526d55";
-char *LOCATION = "Nicosia,cy";
-int THREADS = 2;
-int PORT = 2001;
-int DURATION = 120;
+char *API_KEY;
+char *LOCATION;
+int THREADS;
+int PORT;
+int DURATION;
 const char *OPENWEATHERMAP_SERVER = "api.openweathermap.org";
 int OPENWEATHERMAP_PORT = 80;
 const char *OPENWEATHERMAP_GET = "GET /data/2.5/%s?q=%s&units=metric&APPID=%s HTTP/1.1\nHost: api.openweathermap.org\nUser-Agent: myOpenHAB\nAccept: application/json\nConnection: close\n\n";
@@ -80,7 +80,7 @@ int read_config(char *filename) {
                     return EXIT_FAILURE;
                 }
                 strncpy(LOCATION, value, strlen(value));
-                LOCATION[strlen(LOCATION)] = '\0';
+                LOCATION[strlen(LOCATION) - 1] = '\0';
             }
             if (strcmp(argument, "API_KEY") == 0) {
                 if ((API_KEY = (char *) calloc((strlen(value) + 1), sizeof(char))) == NULL) {
@@ -88,7 +88,7 @@ int read_config(char *filename) {
                     return EXIT_FAILURE;
                 }
                 strncpy(API_KEY, value, strlen(value));
-                API_KEY[strlen(API_KEY)] = '\0';
+                API_KEY[strlen(API_KEY) - 1] = '\0';
             }
             free(argument);
             free(value);
@@ -566,6 +566,10 @@ int main(int argc, char *argv[]) { /* Server with Internet stream sockets */
     pthread_t *threads;
     int i;
 
+    if (read_config("./config.txt") == EXIT_FAILURE){
+        printf("Error in read_config\n");
+    }
+
     if ((threads = malloc(THREADS * sizeof(pthread_t))) == NULL) {
         perror("malloc threads");
         exit(1);
@@ -580,17 +584,6 @@ int main(int argc, char *argv[]) { /* Server with Internet stream sockets */
     }
     signal(SIGALRM, signal_handler);
     alarm(DURATION);
-
-
-    /*if (read_config("./config.txt") == EXIT_FAILURE){
-        printf("Error in read_config\n");
-    }*/
-
-//    char *a, *b, *c, *d = NULL;
-//    parse("PUT /items/station_id HTTP/1.1\r\nConnection: close\r\n\r\n{\"link\":\"http://myserver.org:8080/items/station_id\",\"state\":\"146268\",\"stateDescription\":{\"pattern\":\"%s\",\"readonly\":true,\"options\":[]},\"editable\":true,\"type\":\"String\",\"name\":\"WeatherAndForecast_Station_StationId\",\"label\":\"StationId\",\"tags\":[],\"groupNames\":[]}]", &a, &b, &c, &d );
-//
-//     printf("a=%s\nb=%s\nc=%s\nd=%s\n",a,b,c,d);
-//     sleep(3000);
 
     int sock, serverlen, yes = 1; // clientlen;
     socklen_t clientlen;
