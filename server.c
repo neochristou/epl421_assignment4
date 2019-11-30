@@ -482,16 +482,10 @@ int put_request(int newsock, char *path, char *connection, char *body) {
 }
 
 void *serve_client() {
-<<<<<<< HEAD
-    while (1) {
-        pthread_mutex_lock(&lock);
 
-        pthread_cond_wait(&client_ready, &lock);
-=======
     while (1){
         pthread_mutex_lock(&thread_lock);
         pthread_cond_wait(&client_ready, &change_work);
->>>>>>> a8b8ea8789bfc51b9cd9cc7c2fd69d0c118acdab
         int newsock = new_socket;
         pthread_mutex_unlock(&thread_lock);
 
