@@ -32,10 +32,10 @@ int new_socket;
 int available_work;
 
 const char *NOT_IMPLEMENTED = "HTTP/1.1 501 Not Implemented\r\nServer: my_webserver\r\nConnection: close\r\nContent-Type: text/plain\r\nContent-Length: 24\r\n\r\nMethod not implemented!";
-const char *REPLY_OK_CLOSE = "HTTP/1.1 200 OK\r\nServer: my_webserver\r\nConnection: close\r\nContent-Type: text/plain\r\nContent-Length: ";
-const char *REPLY_OK_ALIVE = "HTTP/1.1 200 OK\r\nServer: my_webserver\r\nConnection: keep-alive\r\nContent-Type: text/plain\r\nContent-Length: ";
-const char *NOT_FOUND = "HTTP/1.1 404 NotFound\r\nServer: my_webserver\r\nConnection: close\r\nContent-Type: text/plain\r\nContent-Length: 16\r\n\r\nPath not found!";
-const char *ITEM_NOT_FOUND = "HTTP/1.1 404 NotFound\r\nServer: my_webserver\r\nConnection: close\r\nContent-Type: text/plain\r\nContent-Length: 16\r\n\r\nItem not found!";
+const char *REPLY_OK_CLOSE = "HTTP/1.1 200 OK\r\nServer: my_webserver\r\nConnection: close\r\nContent-Type: application/json\r\nContent-Length: ";
+const char *REPLY_OK_ALIVE = "HTTP/1.1 200 OK\r\nServer: my_webserver\r\nConnection: keep-alive\r\nContent-Type: application/json\r\nContent-Length: ";
+const char *NOT_FOUND = "HTTP/1.1 404 Not Found\r\nServer: my_webserver\r\nConnection: close\r\nContent-Type: text/plain\r\nContent-Length: 16\r\n\r\nPath not found!";
+const char *ITEM_NOT_FOUND = "HTTP/1.1 404 Not Found\r\nServer: my_webserver\r\nConnection: close\r\nContent-Type: text/plain\r\nContent-Length: 16\r\n\r\nItem not found!";
 
 int read_config(char *filename) {
     FILE *config_file;
@@ -94,6 +94,12 @@ int read_config(char *filename) {
 }
 
 int parse(char *request, char **method, char **path, char **connection, char **body) {
+
+    if (strcmp(request,"") == 0){
+        printf("ERROR: Empty request\n");
+        return EXIT_FAILURE;
+    }
+
     const char *start_of_path = strchr(request, ' ') + 1;
 
     if ((*method = (char *) calloc((start_of_path - request - 1), sizeof(char))) == NULL) {
@@ -117,6 +123,8 @@ int parse(char *request, char **method, char **path, char **connection, char **b
     char *last_bytes = malloc(3 * sizeof(char));
     strncpy(last_bytes, next_line, 2);
     last_bytes[3] = '\0';
+
+    int body_len = 0;
 
     while ((strcmp(last_bytes, "\r\n") != 0) && next_line != NULL) {
         value_start = strchr(next_line, ':');
@@ -146,6 +154,10 @@ int parse(char *request, char **method, char **path, char **connection, char **b
             strncpy((*connection), value, strlen(value));
         }
 
+        if (strcmp(name, "Content-Length") == 0) {
+            body_len = atoi(value);
+        }
+
         free(name);
         free(value);
         next_line = value_end + 2;
@@ -153,8 +165,16 @@ int parse(char *request, char **method, char **path, char **connection, char **b
         strncpy(last_bytes, next_line, 2);
         last_bytes[3] = '\0';
     }
-    next_line += 2;
-    (*body) = next_line;
+
+    if (body_len != 0){
+        if ((*body = (char *) calloc( body_len + 1, sizeof(char))) == NULL) {
+            perror("malloc body");
+            return EXIT_FAILURE;
+        }
+        strncpy(*body, next_line + 2, body_len);
+        (*body)[strlen(*body)] = '\0';
+    }
+
 
     return EXIT_SUCCESS;
 }
@@ -372,7 +392,6 @@ int delete_request(int newsock, char *path, char *connection) {
         }
     } else if (!strncmp("/items/", path, 7)) {
         char *item_name = &path[7];
-        int i;
         for (i = 0; i < 18; i++) {
             if (strcmp(item_name, choices_array[i]) == 0) {
                 break;
@@ -387,6 +406,7 @@ int delete_request(int newsock, char *path, char *connection) {
 int put_request(int newsock, char *path, char *connection, char *body) {
     int i, j, flag_not_found = 0;
     json_error_t error;
+    printf("BODY:\n%s", body);
     json_t *new_obj = json_loads(body, 0, &error);
     if (!new_obj) {
         fprintf(stderr, "error on line %d %s\n", error.line, error.text);
@@ -435,8 +455,7 @@ void *serve_client() {
     while (1){
         pthread_mutex_lock(&lock);
 
-        while (available_work == 0)
-            pthread_cond_wait(&client_ready, &lock);
+        pthread_cond_wait(&client_ready, &lock);
 
         int newsock = new_socket;
         available_work--;
@@ -452,7 +471,7 @@ void *serve_client() {
             bzero(buf, sizeof buf); /* Initialize buffer */
             if (read(newsock, buf, sizeof buf) < 0) {  /* Receive message */
                 perror("read thread");
-                exit(1);
+                return NULL;
             }
 //            while (read(newsock, buf, sizeof buf) == 0){}
 //            printf("BUF: %s\n\n", buf);
@@ -467,7 +486,7 @@ void *serve_client() {
                 strcpy(buf, NOT_IMPLEMENTED);
                 send = 1;
             } else if (path_exist(path) == EXIT_SUCCESS) {
-                if (!strcmp(method, "GET")) {
+                if (strcmp(method, "GET") == 0) {
                     get_request(newsock, path, connection, 0);
                 } else if (!strcmp(method, "HEAD")) {
                     int length = 0;
@@ -488,7 +507,6 @@ void *serve_client() {
                 exit(1);
             }
         } while (strcmp(connection, "close") != 0); /* Finish on "end" */
-
         close(newsock);
         printf("Connection from somwone is closed\n" ); //rem -> h_name
     }
@@ -516,12 +534,12 @@ int main(int argc, char *argv[]) { /* Server with Internet stream sockets */
         printf("Error in read_config\n");
     }*/
 
-/*    char *a, *b, *c, *d = NULL;
-    parse(" PUT\r\n/items/station_id\r\nHTTP/1.1\r\n\r\n{\"link\":\"http://myserver.org:8080/items/station_id\",\"state\":\"146268\",\"stateDescription\":{\"pattern\":\"%s\",\"readonly\":true,\"options\":[]},\"editable\":true,\"type\":\"String\",\"name\":\"WeatherAndForecast_Station_StationId\",\"label\":\"StationId\",\"tags\":[],\"groupNames\":[]}]", &a, &b, &c, &d );
+//    char *a, *b, *c, *d = NULL;
+//    parse("PUT /items/station_id HTTP/1.1\r\nConnection: close\r\n\r\n{\"link\":\"http://myserver.org:8080/items/station_id\",\"state\":\"146268\",\"stateDescription\":{\"pattern\":\"%s\",\"readonly\":true,\"options\":[]},\"editable\":true,\"type\":\"String\",\"name\":\"WeatherAndForecast_Station_StationId\",\"label\":\"StationId\",\"tags\":[],\"groupNames\":[]}]", &a, &b, &c, &d );
+//
+//     printf("a=%s\nb=%s\nc=%s\nd=%s\n",a,b,c,d);
+//     sleep(3000);
 
-     printf("a=%s\nb=%s\nc=%s\nd=%s\n",a,b,c,d);
-     sleep(3000)
-*/
     int sock, serverlen, yes = 1; // clientlen;
     socklen_t clientlen;
     struct sockaddr_in server, client;
