@@ -25,8 +25,8 @@ json_t *weather_json_struct = NULL;
 char *API_KEY = "64e92529c453f7621bd77a0948526d55";
 char *LOCATION = "Nicosia,cy";
 int THREADS = 2;
-int PORT = 2000;
-int DURATION = 20;
+int PORT = 2001;
+int DURATION = 120;
 const char *OPENWEATHERMAP_SERVER = "api.openweathermap.org";
 int OPENWEATHERMAP_PORT = 80;
 const char *OPENWEATHERMAP_GET = "GET /data/2.5/%s?q=%s&units=metric&APPID=%s HTTP/1.1\nHost: api.openweathermap.org\nUser-Agent: myOpenHAB\nAccept: application/json\nConnection: close\n\n";
@@ -37,7 +37,7 @@ int new_socket;
 int available_work;
 
 const char *NOT_IMPLEMENTED = "HTTP/1.1 501 Not Implemented\r\nServer: my_webserver\r\nConnection: close\r\nContent-Type: text/plain\r\nContent-Length: 24\r\n\r\nMethod not implemented!";
-const char *REPLY_OK_CLOSE = "HTTP/1.1 200 OK\r\nServer: my_webserver\r\nConnection: close\r\nContent-Type: application/json\r\n\r\n";//Content-Length: ";
+const char *REPLY_OK_CLOSE = "HTTP/1.1 200 OK\r\nServer: my_webserver\r\nConnection: close\r\nContent-Type: application/json\r\nContent-Length: ";
 const char *REPLY_OK_ALIVE = "HTTP/1.1 200 OK\r\nServer: my_webserver\r\nConnection: keep-alive\r\nContent-Type: application/json\r\nContent-Length: ";
 const char *NOT_FOUND = "HTTP/1.1 404 Not Found\r\nServer: my_webserver\r\nConnection: close\r\nContent-Type: text/plain\r\nContent-Length: 16\r\n\r\nPath not found!";
 const char *ITEM_NOT_FOUND = "HTTP/1.1 404 Not Found\r\nServer: my_webserver\r\nConnection: close\r\nContent-Type: text/plain\r\nContent-Length: 16\r\n\r\nItem not found!";
@@ -298,7 +298,7 @@ int header_reply(int newsock, char *connection, int content_length, char *temp_b
         strncpy(buf, REPLY_OK_CLOSE, strlen(REPLY_OK_CLOSE));
     else
         strncpy(buf, REPLY_OK_ALIVE, strlen(REPLY_OK_ALIVE));
-    //strcat(buf, content_header);
+    strcat(buf, content_header);
     if (body_reply)
         strcat(buf, temp_buf);
     if (write(newsock, buf, strlen(buf)) < 0) {
@@ -380,8 +380,9 @@ int get_request(int newsock, char *path, char *connection, int find_length) {
         }
     }
     if (find_length) {
+        int len = strlen(temp_buf);
         free(temp_buf);
-        return strlen(temp_buf);
+        return len;
     }
     header_reply(newsock, connection, strlen(temp_buf), temp_buf, 1);
     free(temp_buf);
@@ -521,12 +522,12 @@ void *serve_client() {
                 } else if (!strcmp(method, "HEAD")) {
                     int length = 0;
                     length = get_request(newsock, path, connection, 1);
-                    header_reply(newsock, connection, length, NULL, 0);
+                    if (length != EXIT_FAILURE)
+                        header_reply(newsock, connection, length, NULL, 0);
                 } else if (!strcmp(method, "PUT")) {
                     //char *body = "[{\"link\": \"http://myserver.org:8080/items/station_id\", \"state\": \"15000\", \"stateDescription\": {\"pattern\": \"%s\", \"readonly\": true, \"options\": []}, \"editable\": true, \"type\": \"String\", \"name\": \"WeatherAndForecast_Station_StationId\", \"label\": \"Station Id\", \"tags\": [], \"groupNames\": []}]";
                     rep = put_request(newsock, path, connection, body);
                     if (rep == 2) {
-                        send = 1;
                         item_not_found_reply(newsock);
                     }
                 } else if (!strcmp(method, "DELETE")) {
@@ -633,7 +634,7 @@ int main(int argc, char *argv[]) { /* Server with Internet stream sockets */
         pthread_mutex_lock(&change_work);
         available_work++;
         printf("Available work: %d\n", available_work);
-        if (available_work < THREADS)
+        if (available_work <= THREADS)
             pthread_cond_signal(&client_ready);
         else {
             //reject connection
