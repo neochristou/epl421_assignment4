@@ -465,7 +465,7 @@ int put_request(int newsock, char *path, char *connection, char *body) {
                 break;
             }
         }
-        const char *tok = json_string_value(json_object_get(json_array_get(new_obj, i), "link"));
+        const char *tok = json_string_value(json_object_get(new_obj, "link"));
         char *last = strrchr(tok, '/');
         last++;
         if (strcmp(last, choices_array[i]) == 0) {
