@@ -24,13 +24,14 @@ json_t *weather_json_struct = NULL;
 
 char *API_KEY = "64e92529c453f7621bd77a0948526d55";
 char *LOCATION = "Nicosia,cy";
-int THREADS = 5;
+int THREADS = 2;
 int PORT = 2000;
 int DURATION = 20;
 const char *OPENWEATHERMAP_SERVER = "api.openweathermap.org";
 int OPENWEATHERMAP_PORT = 80;
 const char *OPENWEATHERMAP_GET = "GET /data/2.5/%s?q=%s&units=metric&APPID=%s HTTP/1.1\nHost: api.openweathermap.org\nUser-Agent: myOpenHAB\nAccept: application/json\nConnection: close\n\n";
-pthread_mutex_t lock;
+pthread_mutex_t change_work;
+pthread_mutex_t thread_lock;
 pthread_cond_t client_ready;
 int new_socket;
 int available_work;
@@ -481,14 +482,18 @@ int put_request(int newsock, char *path, char *connection, char *body) {
 }
 
 void *serve_client() {
+<<<<<<< HEAD
     while (1) {
         pthread_mutex_lock(&lock);
 
         pthread_cond_wait(&client_ready, &lock);
+=======
+    while (1){
+        pthread_mutex_lock(&thread_lock);
+        pthread_cond_wait(&client_ready, &change_work);
+>>>>>>> a8b8ea8789bfc51b9cd9cc7c2fd69d0c118acdab
         int newsock = new_socket;
-        available_work--;
-
-        pthread_mutex_unlock(&lock);
+        pthread_mutex_unlock(&thread_lock);
 
         char buf[256000];
         char *method = NULL;
@@ -544,15 +549,22 @@ void *serve_client() {
         } while (strcmp(connection, "close") != 0); /* Finish on "end" */
         close(newsock);
         printf("Connection from somwone is closed\n" ); //rem -> h_name
+
+        pthread_mutex_lock(&change_work);
+        printf("Thread finished\n");
+        available_work--;
+        pthread_mutex_unlock(&change_work);
     }
+
+
 }
 
-void signal_handler(int sig) {
+void signal_handler() {
     printf("RETRIEVING DATA...\n");
     if (get_weather_data() == EXIT_FAILURE) {
         printf("Error in get_weather_data\n");
     }
-    alarm(DURATION);/* we re-install the alarm here */
+    alarm(DURATION);
 }
 
 int main(int argc, char *argv[]) { /* Server with Internet stream sockets */
@@ -624,14 +636,18 @@ int main(int argc, char *argv[]) { /* Server with Internet stream sockets */
             exit(1);
         } /* Accept connection */
 
+        pthread_mutex_lock(&change_work);
         available_work++;
+        printf("Available work: %d\n", available_work);
         if (available_work < THREADS)
             pthread_cond_signal(&client_ready);
         else {
             //reject connection
             available_work--;
+            printf("Refused connection\n");
             close(new_socket);
         }
+        pthread_mutex_unlock(&change_work);
 
     }
 }
