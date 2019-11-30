@@ -581,16 +581,9 @@ int main(int argc, char *argv[]) { /* Server with Internet stream sockets */
     signal(SIGALRM, signal_handler);
     alarm(DURATION);
 
-
-    /*if (read_config("./config.txt") == EXIT_FAILURE){
+    if (read_config("config.txt") == EXIT_FAILURE){
         printf("Error in read_config\n");
-    }*/
-
-//    char *a, *b, *c, *d = NULL;
-//    parse("PUT /items/station_id HTTP/1.1\r\nConnection: close\r\n\r\n{\"link\":\"http://myserver.org:8080/items/station_id\",\"state\":\"146268\",\"stateDescription\":{\"pattern\":\"%s\",\"readonly\":true,\"options\":[]},\"editable\":true,\"type\":\"String\",\"name\":\"WeatherAndForecast_Station_StationId\",\"label\":\"StationId\",\"tags\":[],\"groupNames\":[]}]", &a, &b, &c, &d );
-//
-//     printf("a=%s\nb=%s\nc=%s\nd=%s\n",a,b,c,d);
-//     sleep(3000);
+    }
 
     int sock, serverlen, yes = 1; // clientlen;
     socklen_t clientlen;
