@@ -2,6 +2,14 @@
 #include <unistd.h>
 #include <time.h>
 
+json_t *weather_json_struct = NULL;
+
+const char *choices_array[18] = {"station_id", "current_time", "current_temp", "current_pressure", "current_humidity",
+                                 "current_speed", "current_cloudiness", "current_rain", "current_sunrise", "current_sunset",
+                                 "forecast3_time", "forecast3_temp", "forecast6_time", "forecast6_temp", "forecast9_time",
+                                 "forecast9_temp", "forecast12_time", "forecast12_temp"
+};
+
 
 json_t *createJsonStruct(char *current, char *forecast){
 	json_t *root;
