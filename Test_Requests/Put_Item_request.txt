@@ -1,0 +1,5 @@
+PUT /items/station_id HTTP/1.1
+Connection: close
+Content-Length: 281
+
+{"link": "http://myserver.org:8080/items/station_id", "state": "111111", "stateDescription": {"pattern": "%s", "readonly": true, "options": []}, "editable": true, "type": "String", "name": "WeatherAndForecast_Station_StationId", "label": "Station Id", "tags": [], "groupNames": []}

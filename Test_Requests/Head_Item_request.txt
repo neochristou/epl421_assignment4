@@ -1,0 +1,4 @@
+HEAD /items/station_id HTTP/1.1
+Connection: close
+
+

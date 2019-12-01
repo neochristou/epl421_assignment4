@@ -1,3 +1,4 @@
 GET /items HTTP/1.1
+Connection: close
 
 

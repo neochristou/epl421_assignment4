@@ -566,7 +566,7 @@ int main(int argc, char *argv[]) { /* Server with Internet stream sockets */
     pthread_t *threads;
     int i;
 
-    if (read_config("./config.txt") == EXIT_FAILURE){
+    if (read_config("config.txt") == EXIT_FAILURE){
         printf("Error in read_config\n");
     }
 
