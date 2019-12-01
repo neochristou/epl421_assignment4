@@ -352,13 +352,18 @@ int get_request(int newsock, char *path, char *connection, int find_length) {
     bzero(temp_buf, 100000);
     int i, count = 0;
     if (!strcmp(path, "/items")) {
+        strcat(temp_buf, "[");
         for (i = 0; i < 18; i++) {
             char *temp_buf2 = json_dumps(json_array_get(weather_json_struct, i), JSON_ENSURE_ASCII);
             if (strcmp(temp_buf2, "{}")) {
                 strcat(temp_buf, temp_buf2);
+                strcat(temp_buf, ",");
                 count++;
             }
         }
+
+        temp_buf[strlen(temp_buf)-1]=']';
+
         if (count == 0) {
             item_not_found_reply(newsock);
             free(temp_buf);
