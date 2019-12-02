@@ -239,15 +239,6 @@ int get_weather_data() {
     return EXIT_SUCCESS;
 }
 
-
-/*int body_reply(int newsock, char *body) {
-    if(write(newsock, body, sizeof(body)) < 0) {
-        perror("read");
-        return EXIT_FAILURE;
-    }
-    return EXIT_SUCCESS;
-}*/
-
 void *serve_client() {
     char buf[256000];
     char *method = NULL;
@@ -288,31 +279,39 @@ void *serve_client() {
             printf("Body: %s\n", body);
             bzero(buf, sizeof buf);
             int send = 0, rep = 0;
+            // First check if method exist
             if (method_exist(method) == EXIT_FAILURE) {
                 strncpy(buf, NOT_IMPLEMENTED, strlen(NOT_IMPLEMENTED));
-                send = 1;
+                send = 1;   // Send the reply 
+                // If path exist handle the request for each option
             } else if (path_exist(path) == EXIT_SUCCESS) {
+                // If GET request send from client
                 if (strcmp(method, "GET") == 0) {
                     get_request(newsock, path, connection, 0);
+                    // If HEAD request send from client
                 } else if (!strcmp(method, "HEAD")) {
                     int length = 0;
                     length = get_request(newsock, path, connection, 1);
                     if (length != EXIT_FAILURE)
                         header_reply(newsock, connection, length, NULL, 0);
+                    // If PUT request send from client
                 } else if (!strcmp(method, "PUT")) {
                     //char *body = "[{\"link\": \"http://myserver.org:8080/items/station_id\", \"state\": \"15000\", \"stateDescription\": {\"pattern\": \"%s\", \"readonly\": true, \"options\": []}, \"editable\": true, \"type\": \"String\", \"name\": \"WeatherAndForecast_Station_StationId\", \"label\": \"Station Id\", \"tags\": [], \"groupNames\": []}]";
                     rep = put_request(newsock, path, connection, body);
                     if (rep == 2) {
                         item_not_found_reply(newsock);
                     }
+                    // If DELETE request send from client
                 } else if (!strcmp(method, "DELETE")) {
                     delete_request(newsock, path, connection);
                 }
+                // If method not implemented
             } else {
                 strncpy(buf, NOT_FOUND, strlen(NOT_FOUND));
-                send = 1;
+                send = 1;   // Send the reply 
             }
-            if (send && write(newsock, buf, sizeof buf) < 0) { /* Send message */
+            // Send the reply if Path not found or Method not Implemented
+            if (send && write(newsock, buf, sizeof buf) < 0) {
                 perror("write");
                 return NULL;
             }

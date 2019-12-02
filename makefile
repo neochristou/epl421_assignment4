@@ -39,8 +39,6 @@ doxy:
 clean:
 	rm -rf *.o doxygen.log html
 
-
-
 git:
 	git add .
 	git commit -m "$m"
