@@ -3,7 +3,7 @@
 
 //api.openweathermap.org//data/2.5/weather?q=Nicosia,cy&APPID=64e92529c453f7621bd77a0948526d55
 
-int read_config(char *filename) {
+int read_config(char *filename) { /* Parse the configuration file */
     FILE *config_file;
     char buf[256];
     if ((config_file = fopen(filename, "r")) == NULL) {
@@ -59,12 +59,13 @@ int read_config(char *filename) {
     return EXIT_SUCCESS;
 }
 
-int parse(char *request, char **method, char **path, char **connection, char **body) {
+int parse(char *request, char **method, char **path, char **connection, char **body) { /* Parse the request */
     if (strcmp(request, "") == 0) {
         printf("ERROR: Empty request\n");
         return EXIT_FAILURE;
     }
 
+    //find the beggining of the path in the request, after the first space
     const char *start_of_path = strchr(request, ' ') + 1;
 
     if ((*method = (char *) calloc((start_of_path - request - 1), sizeof(char))) == NULL) {
@@ -74,6 +75,7 @@ int parse(char *request, char **method, char **path, char **connection, char **b
     strncpy(*method, request, start_of_path - request - 1);
     (*method)[strlen(*method)] = '\0';
 
+    //find the end of the path at the next space
     const char *end_of_path = strchr(start_of_path, ' ');
     if ((*path = (char *) calloc((end_of_path - start_of_path + 1), sizeof(char))) == NULL) {
         perror("malloc path");
@@ -85,33 +87,39 @@ int parse(char *request, char **method, char **path, char **connection, char **b
     char *name = NULL, *value_start = NULL, *value_end = NULL, *value = NULL;
     char *next_line = strchr(end_of_path, '\n') + 1;
 
+
+    //check the last two bytes to see if the header has ended
     char *last_bytes = calloc(3, sizeof(char));
     strncpy(last_bytes, next_line, 2);
     last_bytes[2] = '\0';
 
     int body_len = 0;
 
+    //Parse the header arguments
     while ((strcmp(last_bytes, "\r\n") != 0) && next_line != NULL) {
+        //find place of name
         value_start = strchr(next_line, ':');
         if ((name = (char *) calloc((value_start - next_line), sizeof(char))) == NULL) {
             perror("malloc name");
             return EXIT_FAILURE;
         }
+        //copy name into variable
         strncpy(name, next_line, value_start - next_line);
         name[strlen(name)] = '\0';
 //        printf("Name: %s\n", name);
 
         value_start = value_start + 2;
-        value_end = strchr(value_start, '\r');
+        value_end = strchr(value_start, '\r'); //find end of value
         if ((value = (char *) calloc((value_end - value_start), sizeof(char))) == NULL) {
             perror("malloc value");
             return EXIT_FAILURE;
         }
+        //copy value into variable
         strncpy(value, value_start, value_end - value_start);
         value[strlen(value)] = '\0';
 //        printf("Value: %s\n", value);
 
-        if (strcmp(name, "Connection") == 0) {
+        if (strcmp(name, "Connection") == 0) { //check if header had connection field, copy into variable
             if (((*connection) = (char *) calloc((value_end - value_start), sizeof(char))) == NULL) {
                 perror("malloc connection");
                 return EXIT_FAILURE;
@@ -119,7 +127,7 @@ int parse(char *request, char **method, char **path, char **connection, char **b
             strncpy((*connection), value, strlen(value));
         }
 
-        if (strcmp(name, "Content-Length") == 0) {
+        if (strcmp(name, "Content-Length") == 0) { //check if header had content-length field, copy into variable
             body_len = atoi(value);
         }
 
@@ -131,6 +139,7 @@ int parse(char *request, char **method, char **path, char **connection, char **b
         last_bytes[2] = '\0';
     }
 
+    //check if the requests contains a body
     if (body_len != 0) {
         if ((*body = (char *) calloc( body_len + 1, sizeof(char))) == NULL) {
             perror("malloc body");
@@ -175,14 +184,15 @@ int get_weather_data() {
     int res;
     int sock1, sock2;
 
+    //connect to openweathermap
     if ((connect_socket(OPENWEATHERMAP_SERVER, OPENWEATHERMAP_PORT, &sock1)) == EXIT_FAILURE) {
         printf("Error in connect socket\n");
         return EXIT_FAILURE;
     }
 
     bzero(buf, sizeof buf); /* Initialize buffer */
-    sprintf(buf, OPENWEATHERMAP_GET, "weather", LOCATION, API_KEY);
-    if (write(sock1, buf, sizeof buf) < 0) {  /* Send message */
+    sprintf(buf, OPENWEATHERMAP_GET, "weather", LOCATION, API_KEY); //get info for current weather
+    if (write(sock1, buf, sizeof buf) < 0) {
         perror("write");
         return EXIT_FAILURE;
     }
@@ -206,7 +216,7 @@ int get_weather_data() {
         return EXIT_FAILURE;
     }
     bzero(buf, sizeof buf); /* Initialize buffer */
-    sprintf(buf, OPENWEATHERMAP_GET, "forecast", LOCATION, API_KEY, "close");
+    sprintf(buf, OPENWEATHERMAP_GET, "forecast", LOCATION, API_KEY, "close");  //get info for forecast
 
     if (write(sock2, buf, sizeof buf) < 0) {  /* Send message */
         perror("write");
@@ -248,6 +258,7 @@ void *serve_client() {
     int current_write = 0;
 
     while (1){
+        //lock when getting the socket so that only one thread gets the socket
         pthread_mutex_lock(&thread_lock);
         pthread_cond_wait(&client_ready, &change_work);
         int newsock = new_socket;
@@ -261,7 +272,10 @@ void *serve_client() {
                 perror("read thread");
                 return NULL;
             }
+            //we check in case read function has not read the whole request
+            //If it hasn't, continue so read can get the rest of the request, else pass buffer to parse function
             if (strstr(buf, "\r\n\r\n") == NULL){
+                //if the whole request wasn't read, save a counter so we know where the rest of the request will be appended
                 current_write += read_bytes;
                 continue;
             }else{
@@ -270,7 +284,7 @@ void *serve_client() {
 //            while (read(newsock, buf, sizeof buf) == 0){}
 //            printf("BUF: %s\n\n", buf);
             parse(buf, &method, &path, &connection, &body);
-            if (connection == NULL) {
+            if (connection == NULL) { //if connection: close field doesn't exist, it means that connection is keep-alive
                 connection = "keep-alive";
             }
             printf("Method: %s\n", method);
@@ -317,13 +331,14 @@ void *serve_client() {
             }
         } while (strcmp(connection, "close") != 0); /* Finish on "end" */
         close(newsock);
-        printf("Connection from someone is closed\n" ); //rem -> h_name
+//        printf("Connection from someone is closed\n" ); //rem -> h_name
 
         free(method);
         free(path);
         free(connection);
         free(body);
 
+        //lock when decreasing available work value so that there is not a race condition
         pthread_mutex_lock(&change_work);
         printf("Thread finished\n");
         available_work--;
@@ -333,6 +348,7 @@ void *serve_client() {
 }
 
 void signal_handler() {
+    //get data from openweater when an alarm is sent
     printf("RETRIEVING DATA...\n");
     if (get_weather_data() == EXIT_FAILURE) {
         printf("Error in get_weather_data\n");
@@ -344,24 +360,28 @@ int main(int argc, char *argv[]) { /* Server with Internet stream sockets */
     pthread_t *threads;
     int i;
 
+    //read configuration file
     if (read_config("config.txt") == EXIT_FAILURE){
         printf("Error in read_config\n");
     }
 
+    //allocate space for the threads
     if ((threads = malloc(THREADS * sizeof(pthread_t))) == NULL) {
         perror("malloc threads");
         exit(1);
     }
 
+    //create a thread pool
     for (i = 0; i < THREADS; i++) {
         pthread_create(&threads[i], NULL, serve_client, NULL);
     }
 
+    //get data from openweather
     if (get_weather_data() == EXIT_FAILURE) {
         printf("Error in get_weather_data\n");
     }
     signal(SIGALRM, signal_handler);
-    alarm(DURATION);
+    alarm(DURATION); //alarm every DURATION seconds so we get new data from openweather
 
     int sock, serverlen, yes = 1; // clientlen;
     socklen_t clientlen;
@@ -402,13 +422,15 @@ int main(int argc, char *argv[]) { /* Server with Internet stream sockets */
             exit(1);
         } /* Accept connection */
 
+        //lock when changing available work variable so that there is not a race condition
         pthread_mutex_lock(&change_work);
         available_work++;
-        printf("Available work: %d\n", available_work);
+//        printf("Available work: %d\n", available_work);
+        //if there are available thread, signal a thread to handle the request
         if (available_work <= THREADS)
             pthread_cond_signal(&client_ready);
         else {
-            //reject connection
+            //reject connection if there are no available threads
             available_work--;
             printf("Refused connection\n");
             close(new_socket);

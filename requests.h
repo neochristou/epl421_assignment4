@@ -1,7 +1,3 @@
-//
-// Created by neo on 12/1/19.
-//
-
 #ifndef REQUESTS_H
 #define REQUESTS_H
 
