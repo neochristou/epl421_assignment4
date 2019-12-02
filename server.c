@@ -85,9 +85,9 @@ int parse(char *request, char **method, char **path, char **connection, char **b
     char *name = NULL, *value_start = NULL, *value_end = NULL, *value = NULL;
     char *next_line = strchr(end_of_path, '\n') + 1;
 
-    char *last_bytes = malloc(3 * sizeof(char));
+    char *last_bytes = calloc(3, sizeof(char));
     strncpy(last_bytes, next_line, 2);
-    last_bytes[3] = '\0';
+    last_bytes[2] = '\0';
 
     int body_len = 0;
 
@@ -128,7 +128,7 @@ int parse(char *request, char **method, char **path, char **connection, char **b
         next_line = value_end + 2;
 
         strncpy(last_bytes, next_line, 2);
-        last_bytes[3] = '\0';
+        last_bytes[2] = '\0';
     }
 
     if (body_len != 0) {
@@ -249,23 +249,32 @@ int get_weather_data() {
 }*/
 
 void *serve_client() {
+    char buf[256000];
+    char *method = NULL;
+    char *path = NULL;
+    char *connection = NULL;
+    char *body = NULL;
+    int current_write = 0;
 
     while (1){
         pthread_mutex_lock(&thread_lock);
         pthread_cond_wait(&client_ready, &change_work);
         int newsock = new_socket;
         pthread_mutex_unlock(&thread_lock);
+        int read_bytes;
 
-        char buf[256000];
-        char *method = NULL;
-        char *path = NULL;
-        char *connection = NULL;
-        char *body = NULL;
         do {
-            bzero(buf, sizeof buf); /* Initialize buffer */
-            if (read(newsock, buf, sizeof buf) < 0) {  /* Receive message */
+            if(current_write == 0)
+               bzero(buf, sizeof buf); /* Initialize buffer */
+            if ( (read_bytes = read(newsock, buf + current_write, sizeof buf)) < 0) {  /* Receive message */
                 perror("read thread");
                 return NULL;
+            }
+            if (strstr(buf, "\r\n\r\n") == NULL){
+                current_write += read_bytes;
+                continue;
+            }else{
+                current_write = 0;
             }
 //            while (read(newsock, buf, sizeof buf) == 0){}
 //            printf("BUF: %s\n\n", buf);
@@ -309,14 +318,18 @@ void *serve_client() {
             }
         } while (strcmp(connection, "close") != 0); /* Finish on "end" */
         close(newsock);
-        printf("Connection from somwone is closed\n" ); //rem -> h_name
+        printf("Connection from someone is closed\n" ); //rem -> h_name
+
+        free(method);
+        free(path);
+        free(connection);
+        free(body);
 
         pthread_mutex_lock(&change_work);
         printf("Thread finished\n");
         available_work--;
         pthread_mutex_unlock(&change_work);
     }
-
 
 }
 
