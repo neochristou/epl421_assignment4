@@ -1,6 +1,5 @@
 /* File: int_str_server.c */
 #include "server.h"
-
 //api.openweathermap.org//data/2.5/weather?q=Nicosia,cy&APPID=64e92529c453f7621bd77a0948526d55
 
 int read_config(char *filename) {
@@ -10,7 +9,6 @@ int read_config(char *filename) {
         perror("fopen");
         return EXIT_FAILURE;
     }
-
     char *argument, *equals, *value;
     while (fgets(buf, 255, config_file) != NULL) {
         if ((equals = strchr(buf, '=')) != NULL) {
@@ -55,7 +53,6 @@ int read_config(char *filename) {
             free(value);
         }
     }
-
     return EXIT_SUCCESS;
 }
 
@@ -64,9 +61,7 @@ int parse(char *request, char **method, char **path, char **connection, char **b
         printf("ERROR: Empty request\n");
         return EXIT_FAILURE;
     }
-
     const char *start_of_path = strchr(request, ' ') + 1;
-
     if ((*method = (char *) calloc((start_of_path - request - 1), sizeof(char))) == NULL) {
         perror("malloc method");
         return EXIT_FAILURE;
@@ -139,7 +134,6 @@ int parse(char *request, char **method, char **path, char **connection, char **b
         strncpy(*body, next_line + 2, body_len);
         (*body)[strlen(*body)] = '\0';
     }
-
     return EXIT_SUCCESS;
 }
 
@@ -197,8 +191,6 @@ int get_weather_data() {
         strncat(current_json_string, buf, sizeof(buf));
         bzero(buf, sizeof buf); /* Initialize buffer */
     }
-
-    //printf("%s\n", current_json_string);
     close(sock1);
 
     if ((connect_socket(OPENWEATHERMAP_SERVER, OPENWEATHERMAP_PORT, &sock2)) == EXIT_FAILURE) {
@@ -227,30 +219,15 @@ int get_weather_data() {
     }
 
     close(sock2);
-    //printf("%s\n",forecast_json_string);
-    //json_t *createJsonStruct(char *, char *);
     char *current_json_string_noheader = JsonHeaderRemover(current_json_string);
     char *forecast_json_string_noheader = JsonHeaderRemover(forecast_json_string);
 
     weather_json_struct = createJsonStruct(current_json_string_noheader, forecast_json_string_noheader);
-
-    //printf("JSON:\n%s\n", json_dumps(json_struct,JSON_ENSURE_ASCII));
-    //printf("%s\n",forecast_json_string_noheader);
     return EXIT_SUCCESS;
 }
 
-
-/*int body_reply(int newsock, char *body) {
-    if(write(newsock, body, sizeof(body)) < 0) {
-        perror("read");
-        return EXIT_FAILURE;
-    }
-    return EXIT_SUCCESS;
-}*/
-
 void *serve_client() {
-
-    while (1){
+    while (1) {
         pthread_mutex_lock(&thread_lock);
         pthread_cond_wait(&client_ready, &change_work);
         int newsock = new_socket;
@@ -316,8 +293,6 @@ void *serve_client() {
         available_work--;
         pthread_mutex_unlock(&change_work);
     }
-
-
 }
 
 void signal_handler() {
@@ -332,7 +307,7 @@ int main(int argc, char *argv[]) { /* Server with Internet stream sockets */
     pthread_t *threads;
     int i;
 
-    if (read_config("config.txt") == EXIT_FAILURE){
+    if (read_config("config.txt") == EXIT_FAILURE) {
         printf("Error in read_config\n");
     }
 
