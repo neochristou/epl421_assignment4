@@ -18,14 +18,16 @@ Testing: (Send requests)
 Supported requests:
 
     GET /items: Returns 200 OK and a json list containing all available items on the server.
+    Returns 404 Not Found if there are no item on the server.
 
     PUT /items: Adds the provided json list in the server. Returns 200 OK.
+    Returns 404 Not Found and discard changes if there are any items in the list that does not exist on the server.
 
     GET /items/{itemname}: Returns 200 OK and the item in json form.
     Returns 404 Not Found if the item does not exist on the server.
 
     PUT /items/{itemname}: Adds the provided item on the server. Returns 200 OK.
-    Returns 404 Not Found if the item does not exist.
+    Returns 404 Not Found and discard changes if the item does not exist.
 
     DELETE /items: Deletes all the items from the server and returns 200 OK.
 
