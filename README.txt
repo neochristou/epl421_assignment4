@@ -27,6 +27,8 @@ Supported requests:
     PUT /items/{itemname}: Adds the provided item on the server. Returns 200 OK.
     Returns 404 Not Found if the item does not exist.
 
+    DELETE /items: Deletes all the items from the server and returns 200 OK.
+
     DELETE /items/{itemname}: Deletes the item from the server and returns 200 OK.
     Returns 404 Not Found if the item does not exist.
 
